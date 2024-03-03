@@ -1,6 +1,6 @@
-import main.views as views
+import main.views.user
 from django.urls import path
 
 urlpatterns = [
-    path('user/login', views.login, name='login'),
+    path('user/login', main.views.user.login, name='login'),
 ]

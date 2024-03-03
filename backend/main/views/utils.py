@@ -1,5 +1,8 @@
+import json
+
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
+from .exceptions import *
 
 
 def api(allowed_methods: list[str] = None):
@@ -42,11 +45,35 @@ def api(allowed_methods: list[str] = None):
                     "error": "Method not allowed"
                 })
 
+            # Try to parse JSON body (if any)
+            data = None
+            if request.method != "GET":
+                if request.content_type != "application/json":
+                    return JsonResponse(status=400, data={
+                        "ok": False,
+                        "error": f"Content type \"{request.content_type}\" not recognized"
+                    })
+
+                try:
+                    data = json.loads(request.body)
+                except json.JSONDecodeError as e:
+                    return JsonResponse(status=400, data={
+                        "ok": False,
+                        "error": f"Malformed JSON request:\nf{e}"
+                    })
+
             try:
                 return JsonResponse({
                     "ok": True,
-                    "data": function(request, *args, **kwargs),
+                    "data": function(data, *args, **kwargs),
                 })
+
+            except DataTypeError as e:
+                return JsonResponse(status=400, data={
+                    "ok": False,
+                    "error": f"Data type error for key \"{e.key}\""
+                })
+
             except Exception as e:
                 return JsonResponse(status=500, data={
                     "ok": False,
@@ -56,8 +83,3 @@ def api(allowed_methods: list[str] = None):
         return decorated
 
     return decorator
-
-
-@api(allowed_methods=["GET", "POST"])
-def login(request):
-    return "Login"
