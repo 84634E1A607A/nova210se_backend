@@ -5,7 +5,7 @@ from django.conf import settings
 from .exceptions import *
 
 
-def api(allowed_methods: list[str] = None):
+def api(allowed_methods: list[str] = None, needs_auth: bool = True):
     """
     Decorator for all API views, checks for allowed methods, handles OPTIONS requests,
     parses JSON body and returns JSON response.
@@ -47,9 +47,16 @@ def api(allowed_methods: list[str] = None):
                     "error": "Method not allowed"
                 })
 
+            # Check for authentication
+            if needs_auth and not request.user.is_authenticated:
+                return JsonResponse(status=401, data={
+                    "ok": False,
+                    "error": "Not authorized"
+                })
+
             # Try to parse JSON body (if any)
             data = None
-            if request.method != "GET":
+            if request.method != "GET" and request.content_type != "":
                 if request.content_type != "application/json":
                     return JsonResponse(status=400, data={
                         "ok": False,
@@ -65,7 +72,7 @@ def api(allowed_methods: list[str] = None):
                     })
 
             try:
-                response_data = function(data, request=request, *args, **kwargs)
+                response_data = function(data, request, *args, **kwargs)
                 if isinstance(response_data, tuple):
                     status, data = response_data
                     return JsonResponse(status=status, data={

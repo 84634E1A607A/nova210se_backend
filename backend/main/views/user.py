@@ -4,12 +4,13 @@ User Control
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as AuthUser
+
 from .utils import api
 from .exceptions import *
 from main.models import User
 
 
-@api(allowed_methods=["POST"])
+@api(allowed_methods=["POST"], needs_auth=False)
 def login(data, request):
     """
     /user/login
@@ -42,16 +43,10 @@ def login(data, request):
     # Log user in
     auth_login(request, auth_user)
 
-    user = User.objects.get(user=auth_user)
-
-    return {
-        "id": user.id,
-        "user_name": user.user_name,
-        "avatar_url": user.avatar_url,
-    }
+    return get_user_info(request)
 
 
-@api(allowed_methods=["POST"])
+@api(allowed_methods=["POST"], needs_auth=False)
 def register(data, request):
     """
     /user/register
@@ -81,17 +76,13 @@ def register(data, request):
     auth_user = AuthUser.objects.create_user(username=user_name, password=password)
     auth_user.save()
 
-    user = User(user=auth_user, user_name=user_name, avatar_url="")
+    user = User(auth_user=auth_user, avatar_url="")
     user.save()
 
     # Log user in
     auth_login(request, auth_user)
 
-    return {
-        "id": user.id,
-        "user_name": user.user_name,
-        "avatar_url": user.avatar_url,
-    }
+    return get_user_info(request)
 
 
 @api(allowed_methods=["POST"])
@@ -102,3 +93,69 @@ def logout(data, request):
 
     # Log user out
     auth_logout(request)
+
+
+@api(allowed_methods=["GET", "PUT", "DELETE"])
+def query(data, request):
+    """
+    /user (GET, PUT, DELETE)
+    """
+
+    if request.method == "GET":
+        return get_user_info(request)
+
+    if request.method == "PUT":
+        return edit_user_info(data, request)
+
+    if request.method == "DELETE":
+        return delete_user(request)
+
+
+def get_user_info(request):
+    user = User.objects.get(auth_user=request.user)
+    return {
+        "id": user.id,
+        "user_name": user.auth_user.username,
+        "avatar_url": user.avatar_url,
+    }
+
+
+def edit_user_info(data, request):
+    user = User.objects.get(auth_user=request.user)
+
+    # Check password first
+    if "new_password" in data:
+        if not isinstance(data["new_password"], str):
+            raise DataTypeError("new_password")
+
+        if not isinstance(data["old_password"], str):
+            raise DataTypeError("old_password")
+
+        if not user.auth_user.check_password(data["old_password"]):
+            return 401, "Old password is incorrect"
+
+        user.auth_user.set_password(data["new_password"])
+
+    if "user_name" in data:
+        if not isinstance(data["user_name"], str):
+            raise DataTypeError("user_name")
+
+        user.auth_user.username = data["user_name"]
+
+    if "avatar_url" in data:
+        if not isinstance(data["avatar_url"], str):
+            raise DataTypeError("avatar_url")
+
+        user.avatar_url = data["avatar_url"]
+
+    user.save()
+    user.auth_user.save()
+    auth_login(request, user.auth_user)
+
+    return get_user_info(request)
+
+
+def delete_user(request):
+    user = User.objects.get(auth_user=request.user)
+    user.auth_user.delete()
+    user.delete()
