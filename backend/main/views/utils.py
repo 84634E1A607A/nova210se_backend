@@ -11,6 +11,8 @@ def api(allowed_methods: list[str] = None):
     parses JSON body and returns JSON response.
 
     This function never throws and always returns a JsonResponse (for all but OPTIONS requests).
+
+    The decorated function should return a dictionary or a tuple of (status, string).
     """
 
     if allowed_methods is None:
@@ -63,9 +65,17 @@ def api(allowed_methods: list[str] = None):
                     })
 
             try:
+                response_data = function(data, request=request, *args, **kwargs)
+                if isinstance(response_data, tuple):
+                    status, data = response_data
+                    return JsonResponse(status=status, data={
+                        "ok": False,
+                        "error": data
+                    })
+
                 return JsonResponse({
                     "ok": True,
-                    "data": function(data, *args, **kwargs),
+                    "data": response_data,
                 })
 
             except DataTypeError as e:
