@@ -100,3 +100,10 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
         return decorated
 
     return decorator
+
+
+def not_found(request):
+    return JsonResponse(status=404, data={
+        "ok": False,
+        "error": "Not found"
+    })

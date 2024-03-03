@@ -121,6 +121,10 @@ def get_user_info(request):
 
 
 def edit_user_info(data, request):
+    """
+    Edit user information, supports partial updates.
+    """
+
     user = User.objects.get(auth_user=request.user)
 
     # Check password first
@@ -159,3 +163,21 @@ def delete_user(request):
     user = User.objects.get(auth_user=request.user)
     user.auth_user.delete()
     user.delete()
+
+
+@api(allowed_methods=["GET"])
+def get_user_info_by_id(data, request, _id: int):
+    """
+    /user/{id}
+    """
+
+    try:
+        user = User.objects.get(id=_id)
+    except User.DoesNotExist:
+        return 404, "User not found"
+
+    return {
+        "id": user.id,
+        "user_name": user.auth_user.username,
+        "avatar_url": user.avatar_url,
+    }
