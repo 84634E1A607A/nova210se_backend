@@ -19,7 +19,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), "{This is not JSON}", content_type="application/json")
         self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_bad_content_type(self):
         """
@@ -29,7 +29,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), "password=", content_type="multipart/form-data")
         self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_404_page(self):
         """
@@ -40,7 +40,7 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.headers["Content-Type"], "application/json")
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_create_user(self):
         """
@@ -55,7 +55,7 @@ class UserControlTests(TestCase):
         # Check response status
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["ok"], True)
+        self.assertTrue(data["ok"])
 
         # Check user is created
         user_id = data["data"]["id"]
@@ -100,7 +100,7 @@ class UserControlTests(TestCase):
         # Check response status
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["ok"], True)
+        self.assertTrue(data["ok"])
 
         # Check user is logged in
         self.assertEqual(self.client.get(reverse("user")).status_code, 200)
@@ -122,7 +122,7 @@ class UserControlTests(TestCase):
         # Check response status
         self.assertEqual(response.status_code, 401)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_login_user_fail_user(self):
         """
@@ -140,7 +140,7 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_login_user_fail_no_user_name(self):
         """
@@ -157,7 +157,7 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_create_duplicate_user(self):
         """
@@ -176,7 +176,7 @@ class UserControlTests(TestCase):
         # Check response status
         self.assertEqual(response.status_code, 409)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_create_user_with_empty_name(self):
         """
@@ -191,7 +191,7 @@ class UserControlTests(TestCase):
         # Check response status
         self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertEqual(data["ok"], False)
+        self.assertFalse(data["ok"])
 
     def test_get_user_info(self):
         """
@@ -205,7 +205,7 @@ class UserControlTests(TestCase):
         response = self.client.get(reverse("user"))
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["ok"], True)
+        self.assertTrue(data["ok"])
         self.assertEqual(data["data"]["user_name"], "test_user")
 
     def test_delete_user(self):
@@ -286,14 +286,33 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["avatar_url"], "new_avatar_url")
 
-    # def test_get_user_by_id(self):
-    #     """
-    #     Get a user by ID
-    #     """
+    def test_get_user_by_id(self):
+        """
+        Get a user by ID
+        """
 
-    #     # Create user
-    #     self.test_create_user()
+        # Create user
+        self.test_create_user()
 
-    #     # Get user
-    #     _id = User.objects.first().id
-    #     response = self.client.get(reverse("user"))
+        # Get user
+        _id = User.objects.first().id
+        response = self.client.get(reverse("user_by_id", kwargs={"_id": _id}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.json()["data"]["id"], _id)
+        self.assertEqual(response.json()["data"]["user_name"], User.objects.first().auth_user.username)
+
+    def test_get_user_by_id_fail(self):
+        """
+        Get a user by ID that does not exist
+        """
+
+        # Create user
+        self.test_create_user()
+
+        # Get user
+        response = self.client.get(reverse("user_by_id", kwargs={"_id": 12345}))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()["ok"])
