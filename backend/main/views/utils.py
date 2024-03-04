@@ -1,3 +1,4 @@
+import inspect
 import json
 
 from django.http import HttpResponse, JsonResponse
@@ -12,7 +13,8 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
 
     This function never throws and always returns a JsonResponse (for all but OPTIONS requests).
 
-    The decorated function should return a dictionary or a tuple of (status, string).
+    The decorated function should have a parameter signature of (data), (data, request) or (data, auth_user)
+    with *args, **kwargs, and should return an object or a tuple of (status, string).
     """
 
     if allowed_methods is None:
@@ -72,7 +74,16 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                     })
 
             try:
-                response_data = function(data, request, *args, **kwargs)
+                parameters = inspect.signature(function).parameters
+                if "request" in parameters:
+                    kwargs["request"] = request
+                if "auth_user" in parameters:
+                    kwargs["auth_user"] = request.user
+                if "data" in parameters:
+                    kwargs["data"] = data
+
+                response_data = function(*args, **kwargs)
+
                 if isinstance(response_data, tuple):
                     status, data = response_data
                     return JsonResponse(status=status, data={
@@ -85,7 +96,13 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                     "data": response_data,
                 })
 
-            except DataTypeError as e:
+            except FieldMissingError as e:
+                return JsonResponse(status=400, data={
+                    "ok": False,
+                    "error": f"Field \"{e.key}\" is missing"
+                })
+
+            except FieldTypeError as e:
                 return JsonResponse(status=400, data={
                     "ok": False,
                     "error": f"Data type error for key \"{e.key}\""
@@ -96,6 +113,32 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                     "ok": False,
                     "error": f"Internal server error: {e}"
                 })
+
+        return decorated
+
+    return decorator
+
+
+def check_fields(struct: dict):
+    """
+    Decorator to check required fields and throws exception if any is missing.
+
+    Pass in data structure in dict format:
+    {
+        "field": type
+    }
+    """
+
+    def decorator(function):
+        def decorated(data, request, *args, **kwargs):
+            for key, value in struct.items():
+                if key not in data:
+                    raise FieldMissingError(key)
+
+                if not isinstance(data[key], value):
+                    raise FieldTypeError(key)
+
+            return function(data, request, *args, **kwargs)
 
         return decorated
 

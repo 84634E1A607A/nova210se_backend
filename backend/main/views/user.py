@@ -4,33 +4,29 @@ User Control
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as AuthUser
+from django.http import HttpRequest
 
-from .utils import api
+from .utils import api, check_fields
 from .exceptions import *
 from main.models import User
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
-def login(data, request):
+@check_fields({
+    "user_name": str,
+    "password": str
+})
+def login(data, request: HttpRequest):
     """
     /user/login
-
-    expects data like:
-    {
-        "user_name": "NAME",
-        "password": "PASSWORD"
-    }
     """
-
-    # Check data type
-    if not isinstance(data["user_name"], str):
-        raise DataTypeError("user_name")
-
-    if not isinstance(data["password"], str):
-        raise DataTypeError("password")
 
     user_name: str = data["user_name"]
     password: str = data["password"]
+
+    # Check username non-empty
+    if user_name == "":
+        return 400, "User name cannot be empty"
 
     # Authenticate user
     if not AuthUser.objects.filter(username=user_name).exists():
@@ -43,27 +39,18 @@ def login(data, request):
     # Log user in
     auth_login(request, auth_user)
 
-    return get_user_info(request)
+    return get_user_info(auth_user)
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
-def register(data, request):
+@check_fields({
+    "user_name": str,
+    "password": str
+})
+def register(data, request: HttpRequest):
     """
     /user/register
-
-    expects data like:
-    {
-        "user_name": "NAME",
-        "password": "PASSWORD"
-    }
     """
-
-    # Check data type
-    if not isinstance(data["user_name"], str):
-        raise DataTypeError("user_name")
-
-    if not isinstance(data["password"], str):
-        raise DataTypeError("password")
 
     user_name: str = data["user_name"]
     password: str = data["password"]
@@ -71,6 +58,10 @@ def register(data, request):
     # Check if user already exists
     if AuthUser.objects.filter(username=user_name).exists():
         return 409, "User already exists"
+
+    # Check username non-empty
+    if user_name == "":
+        return 400, "User name cannot be empty"
 
     # Create user
     auth_user = AuthUser.objects.create_user(username=user_name, password=password)
@@ -82,11 +73,11 @@ def register(data, request):
     # Log user in
     auth_login(request, auth_user)
 
-    return get_user_info(request)
+    return get_user_info(auth_user)
 
 
 @api(allowed_methods=["POST"])
-def logout(data, request):
+def logout(request):
     """
     /user/logout
     """
@@ -102,17 +93,17 @@ def query(data, request):
     """
 
     if request.method == "GET":
-        return get_user_info(request)
+        return get_user_info(request.user)
 
     if request.method == "PUT":
         return edit_user_info(data, request)
 
     if request.method == "DELETE":
-        return delete_user(request)
+        return delete_user(request.user)
 
 
-def get_user_info(request):
-    user = User.objects.get(auth_user=request.user)
+def get_user_info(auth_user: AuthUser):
+    user = User.objects.get(auth_user=auth_user)
     return {
         "id": user.id,
         "user_name": user.auth_user.username,
@@ -120,7 +111,7 @@ def get_user_info(request):
     }
 
 
-def edit_user_info(data, request):
+def edit_user_info(data, request: HttpRequest):
     """
     Edit user information, supports partial updates.
     """
@@ -130,10 +121,13 @@ def edit_user_info(data, request):
     # Check password first
     if "new_password" in data:
         if not isinstance(data["new_password"], str):
-            raise DataTypeError("new_password")
+            raise FieldTypeError("new_password")
+
+        if "old_password" not in data:
+            raise FieldMissingError("old_password")
 
         if not isinstance(data["old_password"], str):
-            raise DataTypeError("old_password")
+            raise FieldTypeError("old_password")
 
         if not user.auth_user.check_password(data["old_password"]):
             return 401, "Old password is incorrect"
@@ -142,13 +136,13 @@ def edit_user_info(data, request):
 
     if "user_name" in data:
         if not isinstance(data["user_name"], str):
-            raise DataTypeError("user_name")
+            raise FieldTypeError("user_name")
 
         user.auth_user.username = data["user_name"]
 
     if "avatar_url" in data:
         if not isinstance(data["avatar_url"], str):
-            raise DataTypeError("avatar_url")
+            raise FieldTypeError("avatar_url")
 
         user.avatar_url = data["avatar_url"]
 
@@ -156,17 +150,17 @@ def edit_user_info(data, request):
     user.auth_user.save()
     auth_login(request, user.auth_user)
 
-    return get_user_info(request)
+    return get_user_info(request.user)
 
 
-def delete_user(request):
-    user = User.objects.get(auth_user=request.user)
+def delete_user(auth_user: AuthUser):
+    user = User.objects.get(auth_user=auth_user)
     user.auth_user.delete()
     user.delete()
 
 
 @api(allowed_methods=["GET"])
-def get_user_info_by_id(data, request, _id: int):
+def get_user_info_by_id(_id: int):
     """
     /user/{id}
     """
