@@ -23,18 +23,7 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
     if "OPTIONS" not in allowed_methods:
         allowed_methods.append("OPTIONS")
 
-    # Apply CORS headers
-    def with_cors(function):
-        def decorated(request, *args, **kwargs) -> HttpResponse:
-            response = function(request, *args, **kwargs)
-            response["Access-Control-Allow-Origin"] = settings.CORS_ORIGIN
-            response["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
-            return response
-
-        return decorated
-
     def decorator(function):
-        @with_cors
         def decorated(request, *args, **kwargs) -> HttpResponse:
             # Always allow OPTIONS requests
             if request.method == "OPTIONS":
