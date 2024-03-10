@@ -30,11 +30,11 @@ def login(data, request: HttpRequest):
 
     # Authenticate user
     if not AuthUser.objects.filter(username=user_name).exists():
-        return 401, "User does not exist or password is incorrect"
+        return 403, "User does not exist or password is incorrect"
 
     auth_user = authenticate(username=user_name, password=password)
     if auth_user is None:
-        return 401, "User does not exist or password is incorrect"
+        return 403, "User does not exist or password is incorrect"
 
     # Log user in
     auth_login(request, auth_user)
@@ -130,7 +130,7 @@ def edit_user_info(data, request: HttpRequest):
             raise FieldTypeError("old_password")
 
         if not user.auth_user.check_password(data["old_password"]):
-            return 401, "Old password is incorrect"
+            return 403, "Old password is incorrect"
 
         user.auth_user.set_password(data["new_password"])
 

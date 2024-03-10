@@ -80,7 +80,7 @@ class UserControlTests(TestCase):
         # Log out
         response = self.client.post(reverse("user_logout"), content_type="")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.client.get(reverse("user")).status_code, 401)
+        self.assertEqual(self.client.get(reverse("user")).status_code, 403)
 
     def test_login_user(self):
         """
@@ -120,7 +120,7 @@ class UserControlTests(TestCase):
         }, content_type="application/json")
 
         # Check response status
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
         data = response.json()
         self.assertFalse(data["ok"])
 
@@ -138,7 +138,7 @@ class UserControlTests(TestCase):
             "password": "test_password"
         }, content_type="application/json")
 
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
         data = response.json()
         self.assertFalse(data["ok"])
 
@@ -221,7 +221,7 @@ class UserControlTests(TestCase):
         # Delete user
         response = self.client.delete(reverse("user"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.client.get(reverse("user")).status_code, 401)
+        self.assertEqual(self.client.get(reverse("user")).status_code, 403)
         self.assertFalse(User.objects.filter(id=_id).exists())
 
     def test_modify_user_name(self):
@@ -268,7 +268,7 @@ class UserControlTests(TestCase):
             "old_password": "wrong_password",
             "new_password": "new_password"
         }, content_type="application/json")
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
         self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
 
     def test_modify_user_avatar(self):
