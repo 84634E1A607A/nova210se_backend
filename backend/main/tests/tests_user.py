@@ -224,21 +224,6 @@ class UserControlTests(TestCase):
         self.assertEqual(self.client.get(reverse("user")).status_code, 403)
         self.assertFalse(User.objects.filter(id=_id).exists())
 
-    def test_modify_user_name(self):
-        """
-        Modify a user's name
-        """
-
-        # Create user
-        self.test_create_user()
-
-        # Modify user
-        response = self.client.put(reverse("user"), {
-            "user_name": "new_user_name"
-        }, content_type="application/json")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["data"]["user_name"], "new_user_name")
-
     def test_modify_user_password(self):
         """
         Modify a user's password

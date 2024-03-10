@@ -18,7 +18,32 @@ from main.models import User
 })
 def login(data, request: HttpRequest):
     """
-    /user/login
+    POST /user/login
+
+    Login to a user account. This API accepts a POST request with JSON content. An example of which is:
+    {
+        "user_name": "user",
+        "password": "password"
+    }
+
+    The API returns the user information if the login is successful and will set session cookies for the user.
+    A successful response looks like:
+    {
+        "ok": true,
+        "data": {
+            "id": 1,
+            "user_name": "user",
+            "avatar_url": "http://..."
+        }
+    }
+
+    If the username doesn't exist or the password is incorrect, the API returns an error message with 403 status code:
+    {
+        "ok": false,
+        "error": "User does not exist or password is incorrect"
+    }
+
+    If user_name or password field is empty or is not string, or if the JSON is bad, API returns 400 status code.
     """
 
     user_name: str = data["user_name"]
@@ -49,7 +74,24 @@ def login(data, request: HttpRequest):
 })
 def register(data, request: HttpRequest):
     """
-    /user/register
+    POST /user/register
+
+    Register a new user account. This API accepts a POST request with JSON content. An example of which is:
+    {
+        "user_name": "user",
+        "password": "password"
+    }
+
+    The API returns the user information if the registration is successful and will set session cookies for the user.
+    A successful response looks just like a login response.
+
+    If the username already exists, the API returns an error message with `409 Conflict` status code:
+    {
+        "ok": false,
+        "error": "User already exists"
+    }
+
+    If user_name or password field is empty or is not string, or if the JSON is bad, API returns 400 status code.
     """
 
     user_name: str = data["user_name"]
@@ -79,7 +121,16 @@ def register(data, request: HttpRequest):
 @api(allowed_methods=["POST"])
 def logout(request):
     """
-    /user/logout
+    POST /user/logout
+
+    This API requires a valid session cookie to be sent with the request. It logs the user out and clears the session.
+    If no valid session is found, the API returns 403 status code with an error message.
+
+    The API returns 200 status code with an empty data field if the logout is successful.
+    {
+        "ok": true,
+        "data": null
+    }
     """
 
     # Log user out
@@ -89,7 +140,15 @@ def logout(request):
 @api(allowed_methods=["GET", "PUT", "DELETE"])
 def query(data, request):
     """
-    /user (GET, PUT, DELETE)
+    GET, PATCH, DELETE /user
+
+    This API requires a valid session cookie to be sent with the request. It accepts GET, PATCH and DELETE requests.
+
+    GET request returns the user information;
+    PATCH request updates the user information;
+    DELETE request deletes the user.
+
+    API documentation for each request type is provided in their own functions.
     """
 
     if request.method == "GET":
@@ -103,6 +162,12 @@ def query(data, request):
 
 
 def get_user_info(auth_user: AuthUser):
+    """
+    GET /user
+
+    Get the user information for the current user. Returns the same struct as the login API.
+    """
+
     user = User.objects.get(auth_user=auth_user)
     return {
         "id": user.id,
@@ -113,7 +178,21 @@ def get_user_info(auth_user: AuthUser):
 
 def edit_user_info(data, request: HttpRequest):
     """
-    Edit user information, supports partial updates.
+    PATCH /user
+
+    This API edits user information, supports partial updates. The API accepts a JSON request with the following fields:
+    {
+        "old_password": "old password",
+        "new_password": "new password",     // Optional
+        "avatar_url": "http://..."          // Optional
+    }
+
+    old_password is required if and only if new_password is present. If old_password is incorrect,
+    the API returns 403 status code.
+
+    If new_password is present, the API updates the password and the session cookies (logs the user out and back in).
+
+    This API returns the user information (like login page) after the update.
     """
 
     user = User.objects.get(auth_user=request.user)
@@ -134,12 +213,6 @@ def edit_user_info(data, request: HttpRequest):
 
         user.auth_user.set_password(data["new_password"])
 
-    if "user_name" in data:
-        if not isinstance(data["user_name"], str):
-            raise FieldTypeError("user_name")
-
-        user.auth_user.username = data["user_name"]
-
     if "avatar_url" in data:
         if not isinstance(data["avatar_url"], str):
             raise FieldTypeError("avatar_url")
@@ -154,6 +227,11 @@ def edit_user_info(data, request: HttpRequest):
 
 
 def delete_user(auth_user: AuthUser):
+    """
+    Delete the user logged in and log him out.
+    This API returns 200 status code with an empty data field if the deletion is successful.
+    """
+
     user = User.objects.get(auth_user=auth_user)
     user.auth_user.delete()
     user.delete()
@@ -162,7 +240,13 @@ def delete_user(auth_user: AuthUser):
 @api(allowed_methods=["GET"])
 def get_user_info_by_id(_id: int):
     """
-    /user/{id}
+    GET /user/{id}
+
+    Get the user information by user ID. Returns the same struct as the login API.
+
+    This API requires a valid session cookie to be sent with the request, or it will return a 403 response.
+
+    If the user with the given ID does not exist, the API returns 404 status code with an error message.
     """
 
     try:

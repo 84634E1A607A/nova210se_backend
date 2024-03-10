@@ -15,6 +15,40 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
 
     The decorated function should have a parameter signature of (data), (data, request) or (data, auth_user)
     with *args, **kwargs, and should return an object or a tuple of (status, string).
+
+    If an API requires valid session but the user is not logged in, the API will return 403 status code:
+    {
+        "ok": false,
+        "error": "Forbidden"
+    }
+
+    If an API is called with a method not in the allowed_methods list, the API will return 405 status code:
+    {
+        "ok": false,
+        "error": "Method not allowed"
+    }
+
+    If an API is called with a bad JSON request, the API will return 400 status code:
+    {
+        "ok": false,
+        "error": "Malformed JSON request"
+    }
+
+    If an API is called 1. Not with GET verb; 2. With a Content-Type other than application/json, the API will return
+    400 status code:
+    {
+        "ok": false,
+        "error": "Content type not recognized"
+    }
+
+    If a FieldMissingError or FieldTypeError is thrown, the API will return 400 status code.
+
+    If any internal error occurs, the API will return 500 status code. In debug mode it will trigger a django 500 page
+    with detailed stack trace in it; in release mode it will return:
+    {
+        "ok": false,
+        "error": "Internal server error"
+    }
     """
 
     if allowed_methods is None:
@@ -116,6 +150,9 @@ def check_fields(struct: dict):
     {
         "field": type
     }
+
+    If the field is missing, this decorator will throw a FieldMissingError.
+    If the field is not of the specified type, this decorator will throw a FieldTypeError.
     """
 
     def decorator(function):
