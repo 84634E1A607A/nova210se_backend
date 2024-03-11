@@ -233,7 +233,7 @@ class UserControlTests(TestCase):
         self.test_create_user()
 
         # Modify user
-        response = self.client.put(reverse("user"), {
+        response = self.client.patch(reverse("user"), {
             "old_password": "test_password",
             "new_password": "new_password"
         }, content_type="application/json")
@@ -249,7 +249,7 @@ class UserControlTests(TestCase):
         self.test_create_user()
 
         # Modify user
-        response = self.client.put(reverse("user"), {
+        response = self.client.patch(reverse("user"), {
             "old_password": "wrong_password",
             "new_password": "new_password"
         }, content_type="application/json")
@@ -265,7 +265,7 @@ class UserControlTests(TestCase):
         self.test_create_user()
 
         # Modify user
-        response = self.client.put(reverse("user"), {
+        response = self.client.patch(reverse("user"), {
             "avatar_url": "new_avatar_url"
         }, content_type="application/json")
         self.assertEqual(response.status_code, 200)

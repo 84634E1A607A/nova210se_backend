@@ -137,7 +137,7 @@ def logout(request):
     auth_logout(request)
 
 
-@api(allowed_methods=["GET", "PUT", "DELETE"])
+@api(allowed_methods=["GET", "PATCH", "DELETE"])
 def query(data, request):
     """
     GET, PATCH, DELETE /user
@@ -154,7 +154,7 @@ def query(data, request):
     if request.method == "GET":
         return get_user_info(request.user)
 
-    if request.method == "PUT":
+    if request.method == "PATCH":
         return edit_user_info(data, request)
 
     if request.method == "DELETE":
