@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
-from .utils import api, check_fields
+from .utils import api, check_fields, user_struct_by_model
 from .exceptions import *
 from main.models import User
 
@@ -169,11 +169,7 @@ def get_user_info(auth_user: AuthUser):
     """
 
     user = User.objects.get(auth_user=auth_user)
-    return {
-        "id": user.id,
-        "user_name": user.auth_user.username,
-        "avatar_url": user.avatar_url,
-    }
+    return user_struct_by_model(user)
 
 
 def edit_user_info(data, request: HttpRequest):
@@ -254,8 +250,4 @@ def get_user_info_by_id(_id: int):
     except User.DoesNotExist:
         return 404, "User not found"
 
-    return {
-        "id": user.id,
-        "user_name": user.auth_user.username,
-        "avatar_url": user.avatar_url,
-    }
+    return user_struct_by_model(user)

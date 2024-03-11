@@ -4,6 +4,7 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from .exceptions import *
+from ..models import User, FriendGroup, Friend, FriendInvitation
 
 
 def api(allowed_methods: list[str] = None, needs_auth: bool = True):
@@ -13,7 +14,7 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
 
     This function never throws and always returns a JsonResponse (for all but OPTIONS requests).
 
-    The decorated function should have a parameter signature of (data), (data, request) or (data, auth_user)
+    The decorated function may have a data (JSON data), request (raw HTTPRequest) or auth_user (AuthUser) parameter
     with *args, **kwargs, and should return an object or a tuple of (status, string).
 
     If an API requires valid session but the user is not logged in, the API will return 403 status code:
@@ -132,6 +133,9 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                 })
 
             except Exception as e:
+                if settings.DEBUG:
+                    raise
+
                 return JsonResponse(status=500, data={
                     "ok": False,
                     "error": f"Internal server error: {e}"
@@ -156,7 +160,7 @@ def check_fields(struct: dict):
     """
 
     def decorator(function):
-        def decorated(data, request, *args, **kwargs):
+        def decorated(data, request, auth_user, *args, **kwargs):
             for key, value in struct.items():
                 if key not in data:
                     raise FieldMissingError(key)
@@ -164,11 +168,52 @@ def check_fields(struct: dict):
                 if not isinstance(data[key], value):
                     raise FieldTypeError(key)
 
-            return function(data, request, *args, **kwargs)
+            parameters = inspect.signature(function).parameters
+            if "request" in parameters:
+                kwargs["request"] = request
+            if "auth_user" in parameters:
+                kwargs["auth_user"] = request.user
+
+            kwargs["data"] = data
+
+            return function(*args, **kwargs)
 
         return decorated
 
     return decorator
+
+
+def user_struct_by_model(user: User):
+    return {
+        "id": user.id,
+        "user_name": user.auth_user.username,
+        "avatar_url": user.avatar_url
+    }
+
+
+def friend_group_struct_by_model(group: FriendGroup):
+    return {
+        "group_id": group.id,
+        "group_name": group.name
+    }
+
+
+def friend_invitation_struct_by_model(invitation: FriendInvitation):
+    return {
+        "id": invitation.id,
+        "sender": user_struct_by_model(invitation.sender),
+        "receiver": user_struct_by_model(invitation.receiver),
+        "comment": invitation.comment,
+        "from": invitation.source if invitation.source >= 0 else "search",
+    }
+
+
+def friend_struct_by_model(friend: Friend):
+    return {
+        "friend": user_struct_by_model(friend.user),
+        "nickname": friend.nickname,
+        "group": friend_group_struct_by_model(friend.group)
+    }
 
 
 def not_found(request):
