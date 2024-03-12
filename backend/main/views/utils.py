@@ -77,7 +77,7 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
             if needs_auth and not request.user.is_authenticated:
                 return JsonResponse(status=403, data={
                     "ok": False,
-                    "error": "Forbidden"
+                    "error": "Invalid Session"
                 })
 
             # Try to parse JSON body (if any)
