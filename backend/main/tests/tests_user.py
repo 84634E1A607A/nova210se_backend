@@ -193,6 +193,36 @@ class UserControlTests(TestCase):
         data = response.json()
         self.assertFalse(data["ok"])
 
+    def test_create_user_with_long_name(self):
+        """
+        Create a user with a very long name
+        """
+
+        response = self.client.post(reverse("user_register"), {
+            "user_name": "a" * 1000,
+            "password": "test_password"
+        }, content_type="application/json")
+
+        # Check response status
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data["ok"])
+
+    def test_create_user_with_invalid_name(self):
+        """
+        Create a user with an invalid name
+        """
+
+        response = self.client.post(reverse("user_register"), {
+            "user_name": "a-ZA-z&&*??:;",
+            "password": "test_password"
+        }, content_type="application/json")
+
+        # Check response status
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data["ok"])
+
     def test_get_user_info(self):
         """
         Get user info
@@ -256,6 +286,38 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
 
+    def test_modify_user_password_too_short(self):
+        """
+        Modify a user's password with short password
+        """
+
+        # Create user
+        self.test_create_user()
+
+        # Modify user
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "new_password": "1234"
+        }, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.first().auth_user.check_password("1234"))
+
+    def test_modify_user_password_with_whitespace(self):
+        """
+        Modify a user's password containing whitespace
+        """
+
+        # Create user
+        self.test_create_user()
+
+        # Modify user
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "new_password": "1 2 3 4 5 6 7 8 9"
+        }, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.first().auth_user.check_password("1 2 3 4 5 6 7 8 9"))
+
     def test_modify_user_avatar(self):
         """
         Modify a user's avatar
@@ -264,12 +326,42 @@ class UserControlTests(TestCase):
         # Create user
         self.test_create_user()
 
+        avatar_url = "https://localhost:8000/avatar.jpg"
+
         # Modify user
         response = self.client.patch(reverse("user"), {
-            "avatar_url": "new_avatar_url"
+            "avatar_url": avatar_url
         }, content_type="application/json")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["data"]["avatar_url"], "new_avatar_url")
+        self.assertEqual(response.json()["data"]["avatar_url"], avatar_url)
+
+    def test_modify_user_avatar_non_http(self):
+        """
+        Try to set a non-HTTP avatar URL
+        """
+
+        # Create user
+        self.test_create_user()
+
+        # Modify user
+        response = self.client.patch(reverse("user"), {
+            "avatar_url": "invalid_avatar_url"
+        }, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_modify_user_avatar_too_long(self):
+        """
+        Try to set a very long avatar URL
+        """
+
+        # Create user
+        self.test_create_user()
+
+        # Modify user
+        response = self.client.patch(reverse("user"), {
+            "avatar_url": "https://localhost:8000/" + "blabla" * 500
+        }, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
 
     def test_get_user_by_id(self):
         """

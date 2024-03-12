@@ -2,6 +2,8 @@
 User Control
 """
 
+import re
+
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
@@ -33,7 +35,7 @@ def login(data, request: HttpRequest):
         "data": {
             "id": 1,
             "user_name": "user",
-            "avatar_url": "http://..."
+            "avatar_url": "https://..."
         }
     }
 
@@ -104,6 +106,12 @@ def register(data, request: HttpRequest):
     # Check username non-empty
     if user_name == "":
         return 400, "User name cannot be empty"
+
+    if len(user_name) > 32:
+        return 400, "User name cannot be longer than 32 characters"
+
+    if not re.match(r"^[a-zA-Z0-9\-_()@.]+$", user_name):
+        return 400, "Only a-z A-Z 0-9 - _ ( ) @ . are allowed."
 
     # Create user
     auth_user = AuthUser.objects.create_user(username=user_name, password=password)
@@ -180,13 +188,22 @@ def edit_user_info(data, request: HttpRequest):
     {
         "old_password": "old password",
         "new_password": "new password",     // Optional
-        "avatar_url": "http://..."          // Optional
+        "avatar_url": "https://..."          // Optional
     }
 
     old_password is required if and only if new_password is present. If old_password is incorrect,
     the API returns 403 status code.
 
     If new_password is present, the API updates the password and the session cookies (logs the user out and back in).
+
+    If the new password doesn't conform to the password requirements, the API returns 400 status code
+    with an error message.
+
+    If the avatar_url is present, the API updates the avatar URL. If the URL is longer than 490 characters,
+    or it doesn't start with http(s)://, the API returns 400 error code.
+
+    All changes are applied if and only if all checks are passed. That is to say, if any error code is returned,
+    none of the requested changes are applied.
 
     This API returns the user information (like login page) after the update.
     """
@@ -207,14 +224,28 @@ def edit_user_info(data, request: HttpRequest):
         if not user.auth_user.check_password(data["old_password"]):
             return 403, "Old password is incorrect"
 
+        # Check new password strength
+        if len(data["new_password"]) < 6:
+            return 400, "Password must be at least 6 characters long"
+
+        if " " in data["new_password"]:
+            return 400, "Password cannot contain spaces"
+
         user.auth_user.set_password(data["new_password"])
 
     if "avatar_url" in data:
         if not isinstance(data["avatar_url"], str):
             raise FieldTypeError("avatar_url")
 
+        if len(data["avatar_url"]) > 490:
+            return 400, "Avatar URL cannot be longer than 490 characters"
+
+        if not re.match(r"^https?://", data["avatar_url"]):
+            return 400, "Invalid avatar URL"
+
         user.avatar_url = data["avatar_url"]
 
+    # Save data only if all checks have passed
     user.save()
     user.auth_user.save()
     auth_login(request, user.auth_user)

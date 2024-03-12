@@ -172,7 +172,7 @@ def check_fields(struct: dict):
             if "request" in parameters:
                 kwargs["request"] = request
             if "auth_user" in parameters:
-                kwargs["auth_user"] = request.user
+                kwargs["auth_user"] = auth_user
 
             kwargs["data"] = data
 
