@@ -106,6 +106,11 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                 if "data" in parameters:
                     kwargs["data"] = data
 
+                if "kwargs" in parameters:
+                    kwargs["request"] = request
+                    kwargs["auth_user"] = request.user
+                    kwargs["data"] = data
+
                 response_data = function(*args, **kwargs)
 
                 if isinstance(response_data, tuple):
@@ -160,7 +165,7 @@ def check_fields(struct: dict):
     """
 
     def decorator(function):
-        def decorated(data, request, auth_user, *args, **kwargs):
+        def decorated(data, **kwargs):
             for key, value in struct.items():
                 if key not in data:
                     raise FieldMissingError(key)
@@ -169,14 +174,14 @@ def check_fields(struct: dict):
                     raise FieldTypeError(key)
 
             parameters = inspect.signature(function).parameters
-            if "request" in parameters:
-                kwargs["request"] = request
-            if "auth_user" in parameters:
-                kwargs["auth_user"] = auth_user
+            if "request" not in parameters and "request" in kwargs:
+                del kwargs["request"]
+            if "auth_user" not in parameters and "auth_user" in kwargs:
+                del kwargs["auth_user"]
 
             kwargs["data"] = data
 
-            return function(*args, **kwargs)
+            return function(**kwargs)
 
         return decorated
 
