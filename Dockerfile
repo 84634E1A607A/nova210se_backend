@@ -10,4 +10,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 80
 
-CMD ["daphne", "backend.asgi:application", "-p", "80"]
+CMD [ "./start.sh" ]

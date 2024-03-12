@@ -19,7 +19,10 @@ SECRET_KEY = 'django-insecure-d57y)ey83sg!+q%e3+_-4^x%v@1z0(f%is&3hixfx8-s+ns**0
 
 DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "backend-nova210se.app.secoder.net",
+    "localhost",
+]
 
 INSTALLED_APPS = [
     "daphne",
@@ -48,7 +51,7 @@ ASGI_APPLICATION = 'backend.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'data/db.sqlite3',
     }
 }
 
@@ -66,7 +69,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = (
-    'http://localhost:3000',
+    'http://frontend-nova210se.app.secoder.net',
 )
 
 # Allow CORS Cookie
