@@ -5,7 +5,7 @@ Unit tests for friend_group-related APIs
 from main.models import FriendGroup
 from django.test import TestCase
 from django.urls import reverse
-from .utils import create_user, get_user_by_name, JsonClient
+from .utils import create_user, get_user_by_name, JsonClient, login_user
 from main.views.utils import friend_group_struct_by_model
 
 
@@ -36,6 +36,34 @@ class FriendGroupControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u1"))
 
         self.add_valid_friend_group(user_name="u1", group_name="test_group")
+
+    def test_add_friend_group_with_repeated_name(self):
+        """
+        Test adding a friend group with repeated name
+        """
+
+        # Creat a user
+        self.assertTrue(create_user(self.client, "u1"))
+
+        # Add a group and check
+        self.add_valid_friend_group(user_name="u1", group_name="test_group")
+
+        # Add another group
+        response = self.client.post(reverse("friend_group_add"), {
+            "group_name": "test_group"
+        })
+
+        id_1 = FriendGroup.objects.filter(name="test_group")[0].id
+        id_2 = FriendGroup.objects.filter(name="test_group")[1].id
+        u1 = get_user_by_name("u1")
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FriendGroup.objects.get(id=id_1).name, "test_group")
+        self.assertEqual(FriendGroup.objects.get(id=id_2).name, "test_group")
+        self.assertEqual(FriendGroup.objects.get(id=id_1).user, u1)
+        self.assertEqual(FriendGroup.objects.get(id=id_2).user, u1)
+        self.assertEqual(FriendGroup.objects.filter(name="test_group").count(), 2)
 
     def test_add_friend_group_long_name(self):
         """
@@ -191,6 +219,8 @@ class FriendGroupControlTests(TestCase):
             "group_id": FriendGroup.objects.get(name="new name").id
         })).status_code, 200)
 
+    # TODO: Add more testcases to edit
+
     def test_delete_friend_group(self):
         """
         Delete a group
@@ -211,3 +241,126 @@ class FriendGroupControlTests(TestCase):
         self.assertEqual(self.client.get(reverse("friend_group_query", kwargs={
             "group_id": _id
         })).status_code, 404)
+
+    def test_delete_friend_group_with_non_existent_group(self):
+        """
+        Delete a group with non-existent group name
+        """
+
+        # Creat user and group
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.add_valid_friend_group(user_name="u1", group_name="group1")
+
+        # Try to delete a group with wrong id
+        response = self.client.delete(reverse("friend_group_query", kwargs={
+            "group_id": 123
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(FriendGroup.objects.filter(name="group1").count(), 1)
+        self.assertEqual(self.client.get(reverse("friend_group_query", kwargs={
+            "group_id": FriendGroup.objects.get(name="group1").id
+        })).status_code, 200)
+
+    def test_delete_others_friend_group(self):
+        """
+        Test deleting others friend group
+        """
+
+        # Creat user and group
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.add_valid_friend_group(user_name="u1", group_name="group1")
+
+        # Creat and login another user
+        self.assertTrue(create_user(self.client, user_name="u2"))
+
+        # Try to delete others group
+        response = self.client.delete(reverse("friend_group_query", kwargs={
+            "group_id": FriendGroup.objects.get(name="group1").id
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(FriendGroup.objects.filter(name="group1").count(), 1)
+        self.assertEqual(self.client.get(reverse("friend_group_query", kwargs={
+            "group_id": FriendGroup.objects.get(name="group1").id
+        })).status_code, 403)
+
+        login_user(self.client, user_name="u1")
+        self.assertEqual(self.client.get(reverse("friend_group_query", kwargs={
+            "group_id": FriendGroup.objects.get(name="group1").id
+        })).status_code, 200)
+
+    def test_list_groups(self):
+        """
+        List the group of a user
+        """
+
+        # Creat user and groups
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.add_valid_friend_group(user_name="u1", group_name="group1")
+        self.add_valid_friend_group(user_name="u1", group_name="group2")
+
+        # Get list
+        response = self.client.get(reverse("friend_group_list"))
+
+        group1 = FriendGroup.objects.get(name="group1")
+        group2 = FriendGroup.objects.get(name="group2")
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u1")).count(), 2)
+        self.assertEqual(response.json()["data"], [
+            friend_group_struct_by_model(group1),
+            friend_group_struct_by_model(group2)
+        ])
+
+    def test_list_empty_group(self):
+        """
+        Try to list groups of a user that has no group
+        """
+
+        # Creat user
+        self.assertTrue(create_user(self.client, user_name="u1"))
+
+        # Get list
+        response = self.client.get(reverse("friend_group_list"))
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u1")).count(), 0)
+        self.assertEqual(response.json()["data"], [])
+
+    def test_list_group_with_multi_users(self):
+        """
+        List group with different user
+        """
+
+        # Creat user and group
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.add_valid_friend_group(user_name="u1", group_name="group1")
+
+        # Get list
+        response = self.client.get(reverse("friend_group_list"))
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u1")).count(), 1)
+        self.assertEqual(response.json()["data"], [
+            friend_group_struct_by_model(FriendGroup.objects.get(name="group1"))
+        ])
+
+        # Creat another user and group
+        self.assertTrue(create_user(self.client, user_name="u2"))
+        self.add_valid_friend_group(user_name="u2", group_name="group2")
+
+        # Get list
+        response = self.client.get(reverse("friend_group_list"))
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u2")).count(), 1)
+        self.assertEqual(response.json()["data"], [
+            friend_group_struct_by_model(FriendGroup.objects.get(name="group2", ))
+        ])
