@@ -36,6 +36,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -66,10 +67,12 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+FRONTEND_URL = "https://frontend-nova210se.app.secoder.net"
+
 # CORS
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = (
-    'http://frontend-nova210se.app.secoder.net',
+    FRONTEND_URL,
 )
 
 # Allow CORS Cookie
@@ -81,6 +84,12 @@ CORS_ALLOW_HEADERS = (
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
+)
+
+# CSRF
+CSRF_FAILURE_VIEW = "main.views.utils.csrf_failure"
+CSRF_TRUSTED_ORIGINS = (
+    FRONTEND_URL + "/",
 )
 
 # Apply local settings

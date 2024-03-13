@@ -4,6 +4,8 @@ User Control
 
 import re
 
+from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token as csrf_get_token
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
@@ -13,6 +15,7 @@ from .exceptions import *
 from main.models import User
 
 
+@csrf_exempt
 @api(allowed_methods=["POST"], needs_auth=False)
 @check_fields({
     "user_name": str,
@@ -66,9 +69,13 @@ def login(data, request: HttpRequest):
     # Log user in
     auth_login(request, auth_user)
 
-    return get_user_info(auth_user)
+    # Add CSRF token
+    csrf_get_token(request)
+
+    return user_struct_by_model(User.objects.get(auth_user=auth_user))
 
 
+@csrf_exempt
 @api(allowed_methods=["POST"], needs_auth=False)
 @check_fields({
     "user_name": str,
@@ -123,7 +130,9 @@ def register(data, request: HttpRequest):
     # Log user in
     auth_login(request, auth_user)
 
-    return get_user_info(auth_user)
+    csrf_get_token(request)
+
+    return user_struct_by_model(user)
 
 
 @api(allowed_methods=["POST"])
@@ -160,7 +169,7 @@ def query(data, request):
     """
 
     if request.method == "GET":
-        return get_user_info(request.user)
+        return get_user_info(request)
 
     if request.method == "PATCH":
         return edit_user_info(data, request)
@@ -169,14 +178,17 @@ def query(data, request):
         return delete_user(request.user)
 
 
-def get_user_info(auth_user: AuthUser):
+def get_user_info(request: HttpRequest):
     """
     GET /user
 
     Get the user information for the current user. Returns the same struct as the login API.
     """
 
-    user = User.objects.get(auth_user=auth_user)
+    user = User.objects.get(auth_user=request.user)
+
+    csrf_get_token(request)
+
     return user_struct_by_model(user)
 
 
@@ -250,7 +262,7 @@ def edit_user_info(data, request: HttpRequest):
     user.auth_user.save()
     auth_login(request, user.auth_user)
 
-    return get_user_info(request.user)
+    return user_struct_by_model(user)
 
 
 def delete_user(auth_user: AuthUser):
