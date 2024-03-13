@@ -3,15 +3,15 @@ Unit tests for friend_group-related APIs
 """
 
 from main.models import FriendGroup
-from django.test import TestCase, Client
+from django.test import TestCase
 from django.urls import reverse
-from .utils import create_user, get_user_by_authuser_name
+from .utils import create_user, get_user_by_name, JsonClient
 from main.views.utils import friend_group_struct_by_model
 
 
 class FriendGroupControlTests(TestCase):
     def setUp(self):
-        self.client = Client()
+        self.client = JsonClient()
 
     def add_valid_friend_group(self, user_name: str, group_name: str = "test_group"):
         """
@@ -20,8 +20,8 @@ class FriendGroupControlTests(TestCase):
 
         response = self.client.post(reverse("friend_group_add"), {
             "group_name": group_name
-        }, content_type="application/json")
-        user = get_user_by_authuser_name(user_name=user_name)
+        })
+        user = get_user_by_name(user_name=user_name)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["group_name"], group_name)
@@ -47,7 +47,7 @@ class FriendGroupControlTests(TestCase):
         group_name = "group_name" * 100
         response = self.client.post(reverse("friend_group_add"), {
             "group_name": group_name
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()["ok"])
@@ -61,7 +61,7 @@ class FriendGroupControlTests(TestCase):
 
         response = self.client.post(reverse("friend_group_add"), {
             "group_name": ""
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()["ok"])
@@ -75,7 +75,7 @@ class FriendGroupControlTests(TestCase):
 
         response = self.client.post(reverse("friend_group_add"), {
             "group_name": 123
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()["ok"])
@@ -87,7 +87,7 @@ class FriendGroupControlTests(TestCase):
 
         response = self.client.post(reverse("friend_group_add"), {
             "group_name": ""
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 403)
         self.assertFalse(response.json()["ok"])
@@ -155,8 +155,8 @@ class FriendGroupControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u2"))
         self.add_valid_friend_group(user_name="u2", group_name="group1")
 
-        filter_1 = FriendGroup.objects.filter(user=get_user_by_authuser_name("u1"))
-        filter_2 = FriendGroup.objects.filter(user=get_user_by_authuser_name("u2"))
+        filter_1 = FriendGroup.objects.filter(user=get_user_by_name("u1"))
+        filter_2 = FriendGroup.objects.filter(user=get_user_by_name("u2"))
 
         # Check Group status
         self.assertEqual(FriendGroup.objects.filter(name="group1").count(), 2)
@@ -164,8 +164,8 @@ class FriendGroupControlTests(TestCase):
         self.assertEqual(filter_2.count(), 1)
         self.assertEqual(filter_1.first().name, "group1")
         self.assertEqual(filter_2.first().name, "group1")
-        self.assertEqual(filter_1.first().user, get_user_by_authuser_name("u1"))
-        self.assertEqual(filter_2.first().user, get_user_by_authuser_name("u2"))
+        self.assertEqual(filter_1.first().user, get_user_by_name("u1"))
+        self.assertEqual(filter_2.first().user, get_user_by_name("u2"))
 
     def test_edit_friend_group_name(self):
         """
@@ -181,12 +181,12 @@ class FriendGroupControlTests(TestCase):
             "group_id": FriendGroup.objects.get(name="group1").id
         }), {
             "group_name": "new name"
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(FriendGroup.objects.filter(name="group1").count(), 0)
         self.assertEqual(FriendGroup.objects.filter(name="new name").count(), 1)
-        self.assertEqual(FriendGroup.objects.get(user=get_user_by_authuser_name("u1")).name, "new name")
+        self.assertEqual(FriendGroup.objects.get(user=get_user_by_name("u1")).name, "new name")
         self.assertEqual(self.client.get(reverse("friend_group_query", kwargs={
             "group_id": FriendGroup.objects.get(name="new name").id
         })).status_code, 200)

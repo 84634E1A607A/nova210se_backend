@@ -11,7 +11,7 @@ from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
 from .utils import api, check_fields, user_struct_by_model
-from .exceptions import *
+from .exceptions import FieldTypeError, FieldMissingError
 from main.models import User
 
 

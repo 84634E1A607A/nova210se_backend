@@ -3,7 +3,7 @@ import json
 
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
-from .exceptions import *
+from .exceptions import FieldMissingError, FieldTypeError
 from ..models import User, FriendGroup, Friend, FriendInvitation
 
 

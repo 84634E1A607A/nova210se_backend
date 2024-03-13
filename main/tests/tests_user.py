@@ -3,20 +3,22 @@ Unit tests for user-related APIs
 """
 
 from main.models import User
-from django.test import TestCase, Client
+from django.test import TestCase
 from django.urls import reverse
+
+from main.tests.utils import JsonClient
 
 
 class UserControlTests(TestCase):
     def setUp(self):
-        self.client = Client()
+        self.client = JsonClient()
 
     def test_bad_json(self):
         """
         Test a bad JSON request
         """
 
-        response = self.client.post(reverse("user_register"), "{This is not JSON}", content_type="application/json")
+        response = self.client.post(reverse("user_register"), "{This is not JSON}")
         self.assertEqual(response.status_code, 400)
         data = response.json()
         self.assertFalse(data["ok"])
@@ -50,7 +52,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), {
             "user_name": "test_user",
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 200)
@@ -95,7 +97,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_login"), {
             "user_name": "test_user",
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 200)
@@ -117,7 +119,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_login"), {
             "user_name": "test_user",
             "password": "wrong_password"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 403)
@@ -136,7 +138,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_login"), {
             "user_name": "wrong_user",
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 403)
         data = response.json()
@@ -153,7 +155,7 @@ class UserControlTests(TestCase):
         # Log in (no username)
         response = self.client.post(reverse("user_login"), {
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         self.assertEqual(response.status_code, 400)
         data = response.json()
@@ -171,7 +173,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), {
             "user_name": "test_user",
             "password": "test_password_2"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 409)
@@ -186,7 +188,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), {
             "user_name": "",
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 400)
@@ -201,7 +203,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), {
             "user_name": "a" * 1000,
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 400)
@@ -216,7 +218,7 @@ class UserControlTests(TestCase):
         response = self.client.post(reverse("user_register"), {
             "user_name": "a-ZA-z&&*??:;",
             "password": "test_password"
-        }, content_type="application/json")
+        })
 
         # Check response status
         self.assertEqual(response.status_code, 400)
@@ -266,7 +268,7 @@ class UserControlTests(TestCase):
         response = self.client.patch(reverse("user"), {
             "old_password": "test_password",
             "new_password": "new_password"
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 200)
         self.assertTrue(User.objects.first().auth_user.check_password("new_password"))
 
@@ -282,7 +284,7 @@ class UserControlTests(TestCase):
         response = self.client.patch(reverse("user"), {
             "old_password": "wrong_password",
             "new_password": "new_password"
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 403)
         self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
 
@@ -298,7 +300,7 @@ class UserControlTests(TestCase):
         response = self.client.patch(reverse("user"), {
             "old_password": "test_password",
             "new_password": "1234"
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 400)
         self.assertFalse(User.objects.first().auth_user.check_password("1234"))
 
@@ -314,7 +316,7 @@ class UserControlTests(TestCase):
         response = self.client.patch(reverse("user"), {
             "old_password": "test_password",
             "new_password": "1 2 3 4 5 6 7 8 9"
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 400)
         self.assertFalse(User.objects.first().auth_user.check_password("1 2 3 4 5 6 7 8 9"))
 
@@ -331,7 +333,7 @@ class UserControlTests(TestCase):
         # Modify user
         response = self.client.patch(reverse("user"), {
             "avatar_url": avatar_url
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["avatar_url"], avatar_url)
 
@@ -346,7 +348,7 @@ class UserControlTests(TestCase):
         # Modify user
         response = self.client.patch(reverse("user"), {
             "avatar_url": "invalid_avatar_url"
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 400)
 
     def test_modify_user_avatar_too_long(self):
@@ -360,7 +362,7 @@ class UserControlTests(TestCase):
         # Modify user
         response = self.client.patch(reverse("user"), {
             "avatar_url": "https://localhost:8000/" + "blabla" * 500
-        }, content_type="application/json")
+        })
         self.assertEqual(response.status_code, 400)
 
     def test_get_user_by_id(self):
