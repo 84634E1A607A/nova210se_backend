@@ -46,7 +46,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'backend.urls'
 
-WSGI_APPLICATION = 'backend.wsgi.application'
 ASGI_APPLICATION = 'backend.asgi.application'
 
 DATABASES = {
@@ -89,7 +88,7 @@ CORS_ALLOW_HEADERS = (
 # CSRF
 CSRF_FAILURE_VIEW = "main.views.utils.csrf_failure"
 CSRF_TRUSTED_ORIGINS = (
-    FRONTEND_URL + "/",
+    FRONTEND_URL,
 )
 
 # Apply local settings
