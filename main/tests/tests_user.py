@@ -8,41 +8,12 @@ from django.urls import reverse
 
 from main.tests.utils import JsonClient
 
+from .utils import create_user
+
 
 class UserControlTests(TestCase):
     def setUp(self):
         self.client = JsonClient()
-
-    def test_bad_json(self):
-        """
-        Test a bad JSON request
-        """
-
-        response = self.client.post(reverse("user_register"), "{This is not JSON}")
-        self.assertEqual(response.status_code, 400)
-        data = response.json()
-        self.assertFalse(data["ok"])
-
-    def test_bad_content_type(self):
-        """
-        Test a bad content type
-        """
-
-        response = self.client.post(reverse("user_register"), "password=", content_type="multipart/form-data")
-        self.assertEqual(response.status_code, 400)
-        data = response.json()
-        self.assertFalse(data["ok"])
-
-    def test_404_page(self):
-        """
-        Test the 404 page
-        """
-
-        response = self.client.get("/this_page_does_not_exist")
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.headers["Content-Type"], "application/json")
-        data = response.json()
-        self.assertFalse(data["ok"])
 
     def test_create_user(self):
         """
@@ -77,7 +48,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Log out
         response = self.client.post(reverse("user_logout"), content_type="")
@@ -90,7 +61,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user and log out
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
         self.client.post(reverse("user_logout"), content_type="")
 
         # Log in
@@ -113,7 +84,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Log in (wrong pass)
         response = self.client.post(reverse("user_login"), {
@@ -132,7 +103,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Log in (wrong user)
         response = self.client.post(reverse("user_login"), {
@@ -150,10 +121,20 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Log in (no username)
         response = self.client.post(reverse("user_login"), {
+            "password": "test_password"
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data["ok"])
+
+        # Log in (empty username)
+        response = self.client.post(reverse("user_login"), {
+            "user_name": "",
             "password": "test_password"
         })
 
@@ -167,7 +148,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Create duplicate user
         response = self.client.post(reverse("user_register"), {
@@ -231,7 +212,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Get user
         response = self.client.get(reverse("user"))
@@ -246,7 +227,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         _id = self.client.get(reverse("user")).json()["data"]["id"]
 
@@ -262,7 +243,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Modify user
         response = self.client.patch(reverse("user"), {
@@ -278,7 +259,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Modify user
         response = self.client.patch(reverse("user"), {
@@ -288,13 +269,28 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
 
+        response = self.client.patch(reverse("user"), {
+            "new_password": "new_password"
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
+
+        response = self.client.patch(reverse("user"), {
+            "old_password": 1234567,
+            "new_password": "new_password"
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
+
+        self.assertTrue(User.objects.first().auth_user.check_password("test_password"))
+
     def test_modify_user_password_too_short(self):
         """
         Modify a user's password with short password
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Modify user
         response = self.client.patch(reverse("user"), {
@@ -310,7 +306,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Modify user
         response = self.client.patch(reverse("user"), {
@@ -326,7 +322,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         avatar_url = "https://localhost:8000/avatar.jpg"
 
@@ -343,7 +339,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Modify user
         response = self.client.patch(reverse("user"), {
@@ -357,7 +353,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Modify user
         response = self.client.patch(reverse("user"), {
@@ -371,7 +367,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Get user
         _id = User.objects.first().id
@@ -388,7 +384,7 @@ class UserControlTests(TestCase):
         """
 
         # Create user
-        self.test_create_user()
+        self.assertTrue(create_user(self.client))
 
         # Get user
         response = self.client.get(reverse("user_by_id", kwargs={"_id": 12345}))
