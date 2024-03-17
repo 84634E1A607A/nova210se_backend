@@ -5,6 +5,7 @@ Unit tests for user-related APIs
 from main.models import User
 from django.test import TestCase
 from django.urls import reverse
+from .utils import create_user, login_user, logout_user
 
 from main.tests.utils import JsonClient
 
@@ -47,13 +48,21 @@ class UserControlTests(TestCase):
         Log out a test user
         """
 
-        # Create user
         self.assertTrue(create_user(self.client))
 
         # Log out
         response = self.client.post(reverse("user_logout"), content_type="")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.client.get(reverse("user")).status_code, 403)
+
+    def test_logout_without_login(self):
+        """
+        Log out when there is no user logged in
+        """
+
+        # Log out
+        response = self.client.post(reverse("user_logout"), content_type="")
+        self.assertEqual(response.status_code, 403)
 
     def test_login_user(self):
         """
@@ -62,7 +71,7 @@ class UserControlTests(TestCase):
 
         # Create user and log out
         self.assertTrue(create_user(self.client))
-        self.client.post(reverse("user_logout"), content_type="")
+        self.assertTrue(logout_user(self.client))
 
         # Log in
         response = self.client.post(reverse("user_login"), {

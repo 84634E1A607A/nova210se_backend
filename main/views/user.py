@@ -12,7 +12,7 @@ from django.http import HttpRequest
 
 from .utils import api, check_fields, user_struct_by_model
 from .exceptions import FieldTypeError, FieldMissingError
-from main.models import User, FriendGroup
+from main.models import User, FriendGroup, Friend
 
 
 @csrf_exempt
@@ -128,9 +128,9 @@ def register(data, request: HttpRequest):
     user.save()
 
     # Add default friend group
-    group = FriendGroup(user=user, name="", default=True)
-    group.save()
-    user.default_group = group
+    default_group = FriendGroup(user=user, name="", default=True)
+    default_group.save()
+    user.default_group = default_group
     user.save()
 
     # Log user in
@@ -278,7 +278,14 @@ def delete_user(auth_user: AuthUser):
     """
 
     user = User.objects.get(auth_user=auth_user)
+
+    # Delete friend groups
     FriendGroup.objects.filter(user=user).delete()
+
+    # Delete friends
+    Friend.objects.filter(user=user).delete()
+    Friend.objects.filter(friend=user).delete()
+
     user.auth_user.delete()
     user.delete()
 
