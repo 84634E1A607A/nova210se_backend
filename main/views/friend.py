@@ -247,11 +247,16 @@ def get_friend_info(auth_user: AuthUser, friend_id):
     {
         "ok": true,
         "data": {
-            "id": 1,
-            "user_name": "user",
-            "avatar_url": "https://...",
+            "friend": {
+                "id": 1
+                "user_name": "user",
+                "avatar_url": "https://..."
+            },
             "nickname": "Hello",
-            "group_id": 1
+            "group": {
+                "group_id": 1,
+                "group_name": "Group"
+            }
         }
     }
     """
