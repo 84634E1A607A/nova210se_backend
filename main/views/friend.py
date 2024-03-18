@@ -40,6 +40,8 @@ def find(data, auth_user: AuthUser):
 
     If both id and name_contains are provided, the API will *only* use id to perform the lookup.
 
+    The current user will not be returned in the list.
+
     If none of the filters are provided, the API returns 400 status code.
     """
 
@@ -107,13 +109,19 @@ def send_invitation(data, auth_user: AuthUser):
     except User.DoesNotExist:
         return 400, "User not found"
 
+    if friend == user:
+        return 400, "Cannot invite yourself as a friend"
+
     # Check if the user is already a friend
     if Friend.objects.filter(user=user, friend=friend).exists():
         return 409, "User is already a friend"
 
     # If the user receives an invitation from the sender, accept it
     if FriendInvitation.objects.filter(sender=friend, receiver=user).exists():
-        accept_invitation(auth_user, FriendInvitation.objects.get(sender=friend, receiver=user).id)
+        # Create the friendship
+        Friend(user=user, friend=friend, nickname="", group=user.default_group).save()
+        Friend(user=friend, friend=user, nickname="", group=friend.default_group).save()
+        FriendInvitation.objects.filter(sender=friend, receiver=user).delete()
         return
 
     # Check invitation source
@@ -202,13 +210,8 @@ def accept_invitation(auth_user: AuthUser, invitation_id: int):
         return 403, "Forbidden"
 
     # Create the friendship
-    friend = Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group)
-    friend.save()
-
-    friend = Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group)
-    friend.save()
-
-    # Delete the invitation
+    Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group).save()
+    Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group).save()
     invitation.delete()
 
 

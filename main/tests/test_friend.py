@@ -68,6 +68,21 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"], [])
 
+    def test_find_friend_by_id_self(self):
+        """
+        Find a user by its own id
+        """
+
+        self.assertTrue(create_user(self.client, user_name="u1"))
+
+        # Find the user by id
+        response = self.client.post(reverse("friend_find"), {
+            "id": User.objects.get(auth_user__username="u1").id,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [])
+
     def test_find_friend_by_name_fail(self):
         """
         Find a user with non-existing keywords
@@ -120,7 +135,20 @@ class UserControlTests(TestCase):
         u1 = User.objects.get(auth_user=AuthUser.objects.get(username="u1"))
         self.assertEqual(response.json()["data"], [user_struct_by_model(u1)])
 
-    def test_send_invitation_with_search(self):
+    def test_find_friend_without_condition(self):
+        """
+        Find users without any condition set
+        """
+
+        # Create users and logout the first two
+        self.assertTrue(create_user(self.client, user_name="u1"))
+
+        # Find the user by name
+        response = self.client.post(reverse("friend_find"), {})
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_send_invitation_from_search(self):
         """
         Send an invitation to a user
         """
@@ -149,7 +177,7 @@ class UserControlTests(TestCase):
         invitation_by_receiver = FriendInvitation.objects.get(receiver=u1)
         self.assertEqual(invitation_by_sender, invitation_by_receiver)
 
-    def test_send_invitation_with_search_non_existent(self):
+    def test_send_invitation_from_search_non_existent(self):
         """
         Send an invitation to a non-existent user and user
         """
@@ -161,6 +189,23 @@ class UserControlTests(TestCase):
             "id": 123,
             "source": "search",
             "comment": ":)"
+        })
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(FriendInvitation.objects.filter(sender__auth_user__username="u1").count(), 0)
+
+    def test_send_invitation_to_oneself(self):
+        """
+        Send an invitation to the user itself
+        """
+
+        self.assertTrue(create_user(self.client, user_name="u1"))
+
+        response = self.client.post(reverse("friend_invite"), {
+            "id": User.objects.get(auth_user__username="u1").id,
+            "source": "search",
+            "comment": "?"
         })
 
         # Check
@@ -186,7 +231,62 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(FriendInvitation.objects.filter(sender__auth_user__username="u1").count(), 0)
 
-    def test_send_multiple_invitations_with_search(self):
+    def test_send_invitation_with_no_source(self):
+        """
+        Send an invitation with no source
+        """
+
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.assertTrue(create_user(self.client, user_name="u2"))
+
+        # Send invitation with weird source
+        response = self.client.post(reverse("friend_invite"), {
+            "id": User.objects.get(auth_user=AuthUser.objects.get(username="u1")).id,
+            "comment": ":)"
+        })
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(FriendInvitation.objects.filter(sender__auth_user__username="u1").count(), 0)
+
+    def test_accept_invitation_via_send_invitation(self):
+        """
+        Accept an invitation by sending an invitation to the sender
+        """
+
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.assertTrue(create_user(self.client, user_name="u2"))
+
+        self.send_invitation_via_search("u1", "u2")
+        self.send_invitation_via_search("u2", "u1")
+
+        # Check
+        self.assertEqual(FriendInvitation.objects.count(), 0)
+        self.assertEqual(Friend.objects.count(), 2)
+
+    def test_invitation_conflict(self):
+        """
+        Sending invitation to a friend
+        """
+
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.assertTrue(create_user(self.client, user_name="u2"))
+
+        self.send_invitation_via_search("u1", "u2")
+        self.send_invitation_via_search("u2", "u1")
+
+        login_user(self.client, "u1")
+        response = self.client.post(reverse("friend_invite"), {
+            "id": User.objects.get(auth_user__username="u2").id,
+            "source": "search",
+            "comment": "Conflict!"
+        })
+
+        # Check
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(FriendInvitation.objects.count(), 0)
+
+    def test_send_multiple_invitations_from_search(self):
         """
         Send invitations to multiple users
         """
@@ -280,7 +380,7 @@ class UserControlTests(TestCase):
         List all invitations related to current user
         """
 
-        # Creat users and send invitations
+        # Create users and send invitations
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
         self.assertTrue(create_user(self.client, "u3"))
@@ -315,7 +415,7 @@ class UserControlTests(TestCase):
         Accept an invitation
         """
 
-        # Creat users and send invitation
+        # Create users and send invitation
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
         u1 = get_user_by_name("u1")
@@ -334,3 +434,41 @@ class UserControlTests(TestCase):
         self.assertEqual(Friend.objects.get(user=u1).friend, u2)
         self.assertEqual(Friend.objects.get(friend=u2).user, u1)
         self.assertEqual(Friend.objects.get(friend=u1).user, u2)
+
+    def test_accept_invitation_not_exist(self):
+        """
+        Accept an non-existent invitation
+        """
+
+        self.assertTrue(create_user(self.client, "u1"))
+        u1 = get_user_by_name("u1")
+
+        # Accept an arbitrary invitation
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("friend_accept_invitation", kwargs={
+            "invitation_id": 32123
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+
+    def test_accept_others_invitation(self):
+        """
+        Accept other's invitation
+        """
+
+        # Create users and send invitation
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        self.send_invitation_via_search("u1", "u2")
+
+        # Accept the invitation
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("friend_accept_invitation", kwargs={
+            "invitation_id": FriendInvitation.objects.first().id
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Friend.objects.count(), 0)
+        self.assertEqual(FriendInvitation.objects.count(), 1)
