@@ -9,7 +9,9 @@ class User(models.Model):
 
     auth_user = models.OneToOneField(AuthUser, on_delete=models.CASCADE)
     id = models.AutoField(primary_key=True)
-    avatar_url = models.CharField(max_length=500)
+
+    # Allow 100KB base64 encoded image
+    avatar_url = models.CharField(max_length=100000)
 
     # Allow this to be null so that there won't be an infinite loop when creating user
     default_group = models.ForeignKey("FriendGroup", on_delete=models.CASCADE,

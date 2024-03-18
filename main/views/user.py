@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
-from .utils import api, check_fields, user_struct_by_model
+from .utils import api, check_fields, user_struct_by_model, generate_random_avatar
 from .exceptions import FieldTypeError, FieldMissingError
 from main.models import User, FriendGroup, Friend
 
@@ -124,7 +124,7 @@ def register(data, request: HttpRequest):
     auth_user = AuthUser.objects.create_user(username=user_name, password=password)
     auth_user.save()
 
-    user = User(auth_user=auth_user, avatar_url="")
+    user = User(auth_user=auth_user, avatar_url=generate_random_avatar(user_name))
     user.save()
 
     # Add default friend group
@@ -258,7 +258,10 @@ def edit_user_info(data, request: HttpRequest):
         if len(data["avatar_url"]) > 490:
             return 400, "Avatar URL cannot be longer than 490 characters"
 
-        if not re.match(r"^https?://", data["avatar_url"]):
+        if data["avatar_url"] == "":
+            data["avatar_url"] = generate_random_avatar(user.auth_user.username)
+
+        elif not re.match(r"^https?://", data["avatar_url"]):
             return 400, "Invalid avatar URL"
 
         user.avatar_url = data["avatar_url"]
