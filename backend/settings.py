@@ -34,9 +34,9 @@ INSTALLED_APPS = [
     'main',
 ]
 
+# CSRF covered by CORS, see https://en.wikipedia.org/wiki/Cross-site_request_forgery#HTTP_verbs_and_CSRF
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -44,7 +44,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
-ROOT_URLCONF = 'backend.urls'
+ROOT_URLCONF = 'main.urls'
 
 ASGI_APPLICATION = 'backend.asgi.application'
 
@@ -83,12 +83,6 @@ CORS_ALLOW_HEADERS = (
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
-)
-
-# CSRF
-CSRF_FAILURE_VIEW = "main.views.utils.csrf_failure"
-CSRF_TRUSTED_ORIGINS = (
-    FRONTEND_URL,
 )
 
 # Apply local settings

@@ -260,10 +260,3 @@ def not_found(request):
         "ok": False,
         "error": "Not found"
     })
-
-
-def csrf_failure(request, reason=""):
-    return JsonResponse(status=403, data={
-        "ok": False,
-        "error": "CSRF verification failed" + (f": {reason}" if reason else "")
-    })

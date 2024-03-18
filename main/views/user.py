@@ -4,7 +4,6 @@ User Control
 
 import re
 
-from django.views.decorators.csrf import csrf_exempt
 from django.middleware.csrf import get_token as csrf_get_token
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as AuthUser
@@ -15,7 +14,6 @@ from .exceptions import FieldTypeError, FieldMissingError
 from main.models import User, FriendGroup, Friend
 
 
-@csrf_exempt
 @api(allowed_methods=["POST"], needs_auth=False)
 @check_fields({
     "user_name": str,
@@ -75,7 +73,6 @@ def login(data, request: HttpRequest):
     return user_struct_by_model(User.objects.get(auth_user=auth_user))
 
 
-@csrf_exempt
 @api(allowed_methods=["POST"], needs_auth=False)
 @check_fields({
     "user_name": str,
