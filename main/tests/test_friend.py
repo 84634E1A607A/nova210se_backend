@@ -441,7 +441,6 @@ class UserControlTests(TestCase):
         """
 
         self.assertTrue(create_user(self.client, "u1"))
-        u1 = get_user_by_name("u1")
 
         # Accept an arbitrary invitation
         self.assertTrue(login_user(self.client, "u1"))
