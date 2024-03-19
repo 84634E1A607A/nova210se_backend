@@ -6,7 +6,8 @@ from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
 from main.models import User, Friend, FriendInvitation, FriendGroup
-from main.views.utils import api, check_fields, user_struct_by_model, friend_invitation_struct_by_model, \
+from main.views.api_utils import api, check_fields
+from main.views.api_struct_by_model import user_struct_by_model, friend_invitation_struct_by_model, \
     friend_struct_by_model
 
 
@@ -135,7 +136,7 @@ def send_invitation(data, auth_user: AuthUser):
 
     elif isinstance(data["source"], int):
         source = data["source"]
-        raise NotImplemented("Group invitation not implemented yet")
+        return 400, f"Group invitation from {source} not implemented yet"
 
     else:
         return 400, "Invalid source"

@@ -6,7 +6,8 @@ from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
 from main.models import User, FriendGroup
-from main.views.utils import api, check_fields, friend_group_struct_by_model
+from main.views.api_utils import api, check_fields
+from main.views.api_struct_by_model import friend_group_struct_by_model
 
 
 @api(allowed_methods=["POST"])

@@ -3,8 +3,6 @@ from django.urls import reverse
 
 from main.tests.utils import JsonClient
 
-from .utils import create_user
-
 
 class MiddleWareTests(TestCase):
     def setUp(self):

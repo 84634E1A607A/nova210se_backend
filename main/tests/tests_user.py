@@ -5,11 +5,8 @@ Unit tests for user-related APIs
 from main.models import User
 from django.test import TestCase
 from django.urls import reverse
-from .utils import create_user, login_user, logout_user
 
-from main.tests.utils import JsonClient
-
-from .utils import create_user
+from main.tests.utils import create_user, logout_user, JsonClient
 
 
 class UserControlTests(TestCase):

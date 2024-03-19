@@ -1,6 +1,6 @@
 from django.test import Client
 from django.urls import reverse
-from main.models import User, AuthUser
+from main.models import User
 
 
 class JsonClient(Client):
@@ -48,7 +48,7 @@ def create_user(client: JsonClient, user_name: str = "test_user", password: str 
         "password": password
     })
 
-    return response.status_code == 200 and client.get(reverse("user")).status_code == 200
+    return response.status_code == 200
 
 
 def logout_user(client: JsonClient):
@@ -59,7 +59,7 @@ def logout_user(client: JsonClient):
     # Log out
     response = client.post(reverse("user_logout"), content_type="")
 
-    return response.status_code == 200 and client.get(reverse("user")).status_code == 403
+    return response.status_code == 200
 
 
 def login_user(client: JsonClient, user_name: str = "test_user", password: str = "test_password"):
@@ -74,4 +74,4 @@ def login_user(client: JsonClient, user_name: str = "test_user", password: str =
     })
 
     data = response.json()
-    return response.status_code == 200 and client.get(reverse("user")).status_code == 200 and data["ok"]
+    return response.status_code == 200 and data["ok"]

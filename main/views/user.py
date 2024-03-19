@@ -9,8 +9,10 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
-from .utils import api, check_fields, user_struct_by_model, generate_random_avatar
-from .exceptions import FieldTypeError, FieldMissingError
+from main.views.api_utils import api, check_fields
+from main.views.api_struct_by_model import user_struct_by_model
+from main.views.generate_avatar import generate_random_avatar
+from main.views.exceptions import FieldTypeError, FieldMissingError
 from main.models import User, FriendGroup, Friend
 
 

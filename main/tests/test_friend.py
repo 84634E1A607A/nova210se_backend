@@ -2,11 +2,13 @@
 Unit tests for user-related APIs
 """
 
-from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
-from main.views.utils import user_struct_by_model, friend_invitation_struct_by_model, friend_struct_by_model
 from django.test import TestCase
 from django.urls import reverse
-from .utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
+
+from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
+from main.views.api_struct_by_model import user_struct_by_model, friend_invitation_struct_by_model, \
+    friend_struct_by_model
+from main.tests.utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
 
 
 class UserControlTests(TestCase):
@@ -542,7 +544,7 @@ class UserControlTests(TestCase):
 
         # login u1, add a friend group and update u2's info
         self.assertTrue(login_user(self.client, "u1"))
-        response = self.client.post(reverse("friend_group_add"), {"group_name": "group"})
+        self.client.post(reverse("friend_group_add"), {"group_name": "group"})
         response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
             "group_id": FriendGroup.objects.get(name="group").id,
             "nickname": "NICKNAME"
@@ -560,7 +562,6 @@ class UserControlTests(TestCase):
 
         # Create users and create friendship
         self.assertTrue(create_user(self.client, "u1"))
-        u1 = get_user_by_name("u1")
 
         # login u1, tries to update someone's inf
         response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": 123}), {
@@ -630,7 +631,6 @@ class UserControlTests(TestCase):
         # Create users and create friendship
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
-        u1 = get_user_by_name("u1")
         u2 = get_user_by_name("u2")
         self.create_friendship("u1", "u2")
 

@@ -1,7 +1,7 @@
 import main.views.user
-import main.views.utils
 import main.views.friend
 import main.views.friend_group
+import main.views.api_utils
 from django.urls import path, re_path
 
 urlpatterns = [
@@ -26,5 +26,5 @@ urlpatterns = [
     path('friend/<int:friend_user_id>', main.views.friend.query, name='friend_query'),
 
     # Catch all and return 404
-    re_path('.*?', main.views.utils.not_found, name='not_found'),
+    re_path('.*?', main.views.api_utils.not_found, name='not_found'),
 ]

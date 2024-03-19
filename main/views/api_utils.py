@@ -1,10 +1,9 @@
 import inspect
 import json
 
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpRequest
 from django.conf import settings
-from .exceptions import FieldMissingError, FieldTypeError
-from ..models import User, FriendGroup, Friend, FriendInvitation
+from main.views.exceptions import FieldMissingError, FieldTypeError
 
 
 def api(allowed_methods: list[str] = None, needs_auth: bool = True):
@@ -61,7 +60,7 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
         allowed_methods.append("OPTIONS")
 
     def decorator(function):
-        def decorated(request, *args, **kwargs) -> HttpResponse:
+        def decorated(request: HttpRequest, *args, **kwargs) -> HttpResponse:
             # Always allow OPTIONS requests
             if request.method == "OPTIONS":
                 response = HttpResponse()
@@ -190,75 +189,8 @@ def check_fields(struct: dict):
     return decorator
 
 
-def generate_random_avatar(seed: str) -> str:
-    """
-    Generate base64 encoded avatar image from a seed string.
-    """
-
-    import pydenticon
-    import random
-    import colorsys
-    import hashlib
-    import base64
-
-    # Generate a random foreground color
-    hue = random.random()
-    saturation = random.random() * 0.5 + 0.3
-    brightness = random.random() * 0.4 + 0.5
-    foreground = colorsys.hsv_to_rgb(hue, saturation, brightness)
-    foreground = '#%02x%02x%02x' % (int(foreground[0] * 255), int(foreground[1] * 255), int(foreground[2] * 255))
-
-    # Generate a random background color
-    hue = hue + 0.5 + random.random() * 0.1
-    if hue > 1:
-        hue -= 1
-    saturation = random.random() * 0.15
-    brightness = 1
-    background = colorsys.hsv_to_rgb(hue, saturation, brightness)
-    background = '#%02x%02x%02x' % (int(background[0] * 255), int(background[1] * 255), int(background[2] * 255))
-
-    # Generate the identicon
-    identicon = pydenticon.Generator(8, 8, foreground=[foreground], background=background, digest=hashlib.sha512) \
-        .generate(seed, 256, 256)
-
-    return f"data:image/png;base64,{base64.b64encode(identicon).decode("latin-1")}"
-
-
-def user_struct_by_model(user: User):
-    return {
-        "id": user.id,
-        "user_name": user.auth_user.username,
-        "avatar_url": user.avatar_url
-    }
-
-
-def friend_group_struct_by_model(group: FriendGroup):
-    return {
-        "group_id": group.id,
-        "group_name": group.name
-    }
-
-
-def friend_invitation_struct_by_model(invitation: FriendInvitation):
-    return {
-        "id": invitation.id,
-        "sender": user_struct_by_model(invitation.sender),
-        "receiver": user_struct_by_model(invitation.receiver),
-        "comment": invitation.comment,
-        "from": invitation.source if invitation.source >= 0 else "search",
-    }
-
-
-def friend_struct_by_model(friend: Friend):
-    return {
-        "friend": user_struct_by_model(friend.friend),
-        "nickname": friend.nickname,
-        "group": friend_group_struct_by_model(friend.group)
-    }
-
-
-def not_found(request):
+def not_found(request: HttpRequest):
     return JsonResponse(status=404, data={
         "ok": False,
-        "error": "Not found"
+        "error": f"{request.path} not found on this server"
     })

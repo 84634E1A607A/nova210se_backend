@@ -2,11 +2,12 @@
 Unit tests for friend_group-related APIs
 """
 
-from main.models import FriendGroup
 from django.test import TestCase
 from django.urls import reverse
-from .utils import create_user, get_user_by_name, JsonClient, login_user
-from main.views.utils import friend_group_struct_by_model
+
+from main.models import FriendGroup
+from main.tests.utils import create_user, get_user_by_name, JsonClient, login_user
+from main.views.api_struct_by_model import friend_group_struct_by_model
 
 
 class FriendGroupControlTests(TestCase):
