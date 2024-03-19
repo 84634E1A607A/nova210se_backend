@@ -12,15 +12,17 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
     Decorator for all API views, checks for allowed methods, handles OPTIONS requests,
     parses JSON body and returns JSON response.
 
-    This function never throws and always returns a JsonResponse (for all but OPTIONS requests).
+    This function never throws, and always returns a JsonResponse (for all but OPTIONS requests).
 
     The decorated function may have a data (JSON data), request (raw HTTPRequest) or auth_user (AuthUser) parameter
     with *args, **kwargs, and should return an object or a tuple of (status, string).
 
+    Any api accepts an OPTIONS request and returns a response with the allowed methods in the "Allow" header.
+
     If an API requires valid session but the user is not logged in, the API will return 403 status code:
     {
         "ok": false,
-        "error": "Forbidden"
+        "error": "Invalid Session"
     }
 
     If an API is called with a method not in the allowed_methods list, the API will return 405 status code:
