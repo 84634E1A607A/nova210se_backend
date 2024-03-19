@@ -85,7 +85,8 @@ def send_invitation(data, auth_user: AuthUser):
 
     Send a friend invitations to the user with the given id with the given comment.
 
-    If a pending invitation is found from the receiver to the sender, the API will accept the invitation.
+    If a pending invitation is found from the receiver to the sender, the API will accept the invitation and return
+    the created friendship.
 
     This API return 200 status code with empty data field if the invitation is sent successfully.
 
@@ -120,10 +121,11 @@ def send_invitation(data, auth_user: AuthUser):
     # If the user receives an invitation from the sender, accept it
     if FriendInvitation.objects.filter(sender=friend, receiver=user).exists():
         # Create the friendship
-        Friend(user=user, friend=friend, nickname="", group=user.default_group).save()
+        f = Friend(user=user, friend=friend, nickname="", group=user.default_group)
+        f.save()
         Friend(user=friend, friend=user, nickname="", group=friend.default_group).save()
         FriendInvitation.objects.filter(sender=friend, receiver=user).delete()
-        return
+        return friend_struct_by_model(f)
 
     # Check invitation source
     if "source" not in data:
@@ -193,7 +195,8 @@ def accept_invitation(method: str, auth_user: AuthUser, invitation_id: int):
     """
     POST, DELETE /friend/invitation/<int:invitation_id>
 
-    Accept / reject a friend invitation by its ID and returns empty data.
+    Accept / reject a friend invitation by its ID. If an invitation is accepted, this API returns friend struct of
+    newly created friendship. If an invitation is rejected, this API returns empty data.
 
     If the invitation is not found, the API returns 400 status code.
 
@@ -212,9 +215,11 @@ def accept_invitation(method: str, auth_user: AuthUser, invitation_id: int):
 
     if method == "POST":
         # Create the friendship
-        Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group).save()
+        friend = Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group)
+        friend.save()
         Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group).save()
         invitation.delete()
+        return friend_struct_by_model(friend)
 
     elif method == "DELETE":
         invitation.delete()

@@ -26,7 +26,7 @@ def friend_invitation_struct_by_model(invitation: FriendInvitation):
         "sender": user_struct_by_model(invitation.sender),
         "receiver": user_struct_by_model(invitation.receiver),
         "comment": invitation.comment,
-        "from": invitation.source if invitation.source >= 0 else "search",
+        "source": invitation.source if invitation.source >= 0 else "search",
     }
 
 
