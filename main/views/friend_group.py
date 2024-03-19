@@ -3,7 +3,6 @@ Friend group control
 """
 
 from django.contrib.auth.models import User as AuthUser
-from django.http import HttpRequest
 
 from main.models import User, FriendGroup
 from main.views.api_utils import api, check_fields
@@ -54,7 +53,7 @@ def add(data, auth_user: AuthUser):
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
-def query(data, request: HttpRequest, group_id: int):
+def query(data, method: str, auth_user: AuthUser, group_id: int):
     """
     GET, PATCH, DELETE /friend/group/<int:group_id>
 
@@ -67,14 +66,14 @@ def query(data, request: HttpRequest, group_id: int):
     Detailed API documentation for each of them can be found in the corresponding function.
     """
 
-    if request.method == "GET":
-        return get_info_by_id(request.user, group_id)
+    if method == "GET":
+        return get_info_by_id(auth_user, group_id)
 
-    if request.method == "PATCH":
-        return edit(data, auth_user=request.user, group_id=group_id)
+    if method == "PATCH":
+        return edit(data, auth_user=auth_user, group_id=group_id)
 
-    if request.method == "DELETE":
-        return delete(request.user, group_id)
+    if method == "DELETE":
+        return delete(auth_user, group_id)
 
 
 def get_info_by_id(auth_user: AuthUser, group_id: int):

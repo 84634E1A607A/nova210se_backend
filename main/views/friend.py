@@ -221,7 +221,7 @@ def accept_invitation(method: str, auth_user: AuthUser, invitation_id: int):
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
-def query(data, request: HttpRequest, friend_user_id: int):
+def query(data, method: str, auth_user: AuthUser, friend_user_id: int):
     """
     GET, PATCH, DELETE /friend/<int:friend_user_id>
 
@@ -232,14 +232,14 @@ def query(data, request: HttpRequest, friend_user_id: int):
     API documentation for each API can be found in the corresponding function.
     """
 
-    if request.method == "GET":
-        return get_friend_info(request.user, friend_user_id)
+    if method == "GET":
+        return get_friend_info(auth_user, friend_user_id)
 
-    if request.method == "PATCH":
-        return update_friend(request.user, friend_user_id, data)
+    if method == "PATCH":
+        return update_friend(auth_user, friend_user_id, data)
 
-    if request.method == "DELETE":
-        return delete_friend(request.user, friend_user_id)
+    if method == "DELETE":
+        return delete_friend(auth_user, friend_user_id)
 
 
 def get_friend_info(auth_user: AuthUser, friend_id):
