@@ -277,9 +277,10 @@ def update_friend(auth_user: AuthUser, friend_id, data):
 
     If the friend is not found, the API returns 400 status code; or it checks if "nickname" or "group_id" is provided.
 
-    If "nickname" is provided, the API trys to updates the nickname
+    If "nickname" is provided, the API tries to updates the nickname. If the "nickname" is not a string, function
+    returns 400.
 
-    If "group_id" is provided, the API trys to updates the group. However, if the group does not exist or does not
+    If "group_id" is provided, the API tries to updates the group. However, if the group does not exist or does not
     belong to the user, 400 and 403 is returned respectively.
 
     Friend information will be updated if and only if no errors occur.
@@ -307,7 +308,7 @@ def update_friend(auth_user: AuthUser, friend_id, data):
         except FriendGroup.DoesNotExist:
             return 400, "Group not found"
 
-        if group.sender.auth_user != auth_user:
+        if group.user.auth_user != auth_user:
             return 403, "Forbidden"
 
         friend.group = group
@@ -331,7 +332,7 @@ def delete_friend(auth_user: AuthUser, friend_id):
     except Friend.DoesNotExist:
         return 400, "Friend not found"
 
-    Friend.objects.get(user=friend.receiver, friend=friend.sender).delete()
+    Friend.objects.get(user=friend.friend, friend=friend.user).delete()
     friend.delete()
 
 

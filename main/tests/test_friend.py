@@ -2,8 +2,8 @@
 Unit tests for user-related APIs
 """
 
-from main.models import User, AuthUser, FriendInvitation, Friend
-from main.views.utils import user_struct_by_model, friend_invitation_struct_by_model
+from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
+from main.views.utils import user_struct_by_model, friend_invitation_struct_by_model, friend_struct_by_model
 from django.test import TestCase
 from django.urls import reverse
 from .utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
@@ -13,7 +13,7 @@ class UserControlTests(TestCase):
     def setUp(self):
         self.client = JsonClient()
 
-    def send_invitation_via_search(self, sender_name, receiver_name, comment=":)"):
+    def send_invitation_via_search(self, sender_name: str, receiver_name: str, comment: str = ":)"):
         """
         Login to sender_name, send an invitation to receiver_name, and logout
 
@@ -31,6 +31,21 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(logout_user(self.client))
+
+    def create_friendship(self, u1_name: str, u2_name: str):
+        """
+        Create a friendship between u1 and u2 directly in database.
+
+        :param u1_name: first user's name, this user must exist
+        :param u2_name: second user's name, this user must also exist
+        """
+
+        u1 = get_user_by_name(u1_name)
+        u2 = get_user_by_name(u2_name)
+        Friend(user=u1, friend=u2, nickname="", group=u1.default_group).save()
+        Friend(user=u2, friend=u1, nickname="", group=u2.default_group).save()
+        self.assertEqual(Friend.objects.get(user=u2, friend=u1).friend, u1)
+        self.assertEqual(Friend.objects.get(user=u1, friend=u2).friend, u2)
 
     def test_find_friend_by_id(self):
         """
@@ -223,7 +238,7 @@ class UserControlTests(TestCase):
         # Send invitation with weird source
         response = self.client.post(reverse("friend_invite"), {
             "id": User.objects.get(auth_user=AuthUser.objects.get(username="u1")).id,
-            "source": "haha",
+            "source": "Hello",
             "comment": ":)"
         })
 
@@ -239,7 +254,7 @@ class UserControlTests(TestCase):
         self.assertTrue(create_user(self.client, user_name="u1"))
         self.assertTrue(create_user(self.client, user_name="u2"))
 
-        # Send invitation with weird source
+        # Send invitation without source
         response = self.client.post(reverse("friend_invite"), {
             "id": User.objects.get(auth_user=AuthUser.objects.get(username="u1")).id,
             "comment": ":)"
@@ -367,7 +382,7 @@ class UserControlTests(TestCase):
         self.assertTrue(login_user(self.client, "u1"))
         response = self.client.post(reverse("friend_invite"), {
             "id": get_user_by_name("u2").id,
-            "source": "haha",
+            "source": "Hello",
             "comment": ":("
         })
         self.assertEqual(response.status_code, 400)
@@ -432,12 +447,10 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Friend.objects.get(user=u2).friend, u1)
         self.assertEqual(Friend.objects.get(user=u1).friend, u2)
-        self.assertEqual(Friend.objects.get(friend=u2).user, u1)
-        self.assertEqual(Friend.objects.get(friend=u1).user, u2)
 
     def test_accept_invitation_not_exist(self):
         """
-        Accept an non-existent invitation
+        Accept a non-existent invitation
         """
 
         self.assertTrue(create_user(self.client, "u1"))
@@ -471,3 +484,233 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(Friend.objects.count(), 0)
         self.assertEqual(FriendInvitation.objects.count(), 1)
+
+    def test_get_friend_info_with_id(self):
+        """
+        Get a friend info with its id
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u2 = get_user_by_name("u2")
+        self.create_friendship("u1", "u2")
+
+        # login u1 and get u2's info
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.get(reverse("friend_query", kwargs={
+            "friend_user_id": u2.id
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["friend"]["user_name"], "u2")
+        self.assertEqual(response.json()["data"]["friend"]["id"], u2.id)
+
+    def test_get_friend_info_with_non_existing_id(self):
+        """
+        Get a non-existing friend info with id
+        """
+
+        # Create user
+        self.assertTrue(create_user(self.client, "u1"))
+
+        # login u1 and get someone's info
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.get(reverse("friend_query", kwargs={
+            "friend_user_id": 2
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()["ok"])
+
+    def test_update_friend_info(self):
+        """
+        Update a friend's group id and nickname
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u1 = get_user_by_name("u1")
+        u2 = get_user_by_name("u2")
+        self.create_friendship("u1", "u2")
+
+        # Check friend info before update
+        self.assertEqual(Friend.objects.get(friend=u2, user=u1).nickname, "")
+
+        # login u1, add a friend group and update u2's info
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("friend_group_add"), {"group_name": "group"})
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
+            "group_id": FriendGroup.objects.get(name="group").id,
+            "nickname": "NICKNAME"
+        })
+
+        # Check friend info after update
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Friend.objects.get(friend=u2, user=u1).group.id, FriendGroup.objects.get(name="group").id)
+        self.assertEqual(Friend.objects.get(friend=u2, user=u1).nickname, "NICKNAME")
+
+    def test_update_non_existing_friend_info(self):
+        """
+        Update a non-existing friend's and nickname
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        u1 = get_user_by_name("u1")
+
+        # login u1, tries to update someone's inf
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": 123}), {
+            "nickname": "NICKNAME"
+        })
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+
+    def test_update_friend_info_invalid_nickname(self):
+        """
+        Update a friend's nickname with invalid name
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u2 = get_user_by_name("u2")
+        self.create_friendship("u1", "u2")
+
+        # login u1, tries to update u2's info with non-existing group id
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
+            "nickname": [1, 2, 3]
+        })
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+
+    def test_update_friend_info_invalid_group_id(self):
+        """
+        Update a friend's group id with invalid id
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u2 = get_user_by_name("u2")
+        self.create_friendship("u1", "u2")
+
+        # login u1, tries to update u2's info with non-existing group id
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
+            "group_id": 123,
+            "nickname": "NICKNAME"
+        })
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+
+        # tries to update u2's info with a string group id
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
+            "group_id": "Hello",
+            "nickname": "NICKNAME"
+        })
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+
+    def test_update_friend_info_to_others_group(self):
+        """
+        Update a friend's group id that is another user's group
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u1 = get_user_by_name("u1")
+        u2 = get_user_by_name("u2")
+        self.create_friendship("u1", "u2")
+
+        # login u1, tries to update u2's with group id that belongs to u2
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
+            "group_id": FriendGroup.objects.get(user=u2).id,
+        })
+
+        # Check
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(response.json()["ok"])
+
+    def test_delete_friend(self):
+        """
+        Delete a friend
+        """
+
+        # Create users and create friendship
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u1 = get_user_by_name("u1")
+        u2 = get_user_by_name("u2")
+        self.create_friendship("u1", "u2")
+
+        # login to u1, delete the friendship with u2
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("friend_query", kwargs={"friend_user_id": u2.id}))
+
+        # Check friend info after update
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Friend.objects.filter(friend=u1).count(), 0)
+        self.assertEqual(Friend.objects.filter(friend=u2).count(), 0)
+        self.assertEqual(Friend.objects.filter(user=u1).count(), 0)
+        self.assertEqual(Friend.objects.filter(user=u2).count(), 0)
+        self.assertEqual(User.objects.filter(id=u2.id).count(), 1)
+
+    def test_delete_non_existing_friend(self):
+        """
+        Delete a non-existing friend
+        """
+
+        # Create user
+        self.assertTrue(create_user(self.client, "u1"))
+
+        # u1 tries to update someone's info
+        response = self.client.delete(reverse("friend_query", kwargs={"friend_user_id": 123}))
+
+        # Check
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Friend not found")
+
+    def test_list_friend(self):
+        """
+        List all the friends
+        """
+
+        # Create users
+        self.assertTrue(create_user(self.client, "ur"))
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        u1 = get_user_by_name("u1")
+        u2 = get_user_by_name("u2")
+
+        # login ur and list friends
+        self.assertTrue(login_user(self.client, "ur"))
+        response = self.client.get(reverse("friend_list_friend"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [])
+
+        # Create friendship and list again
+        self.create_friendship("ur", "u1")
+        f1 = Friend.objects.get(friend=u1)
+        response = self.client.get(reverse("friend_list_friend"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [friend_struct_by_model(f1)])
+
+        # Create friendship again and list
+        self.create_friendship("ur", "u2")
+        f2 = Friend.objects.get(friend=u2)
+        response = self.client.get(reverse("friend_list_friend"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [friend_struct_by_model(f1), friend_struct_by_model(f2)])

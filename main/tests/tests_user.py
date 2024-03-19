@@ -366,7 +366,7 @@ class UserControlTests(TestCase):
 
         # Modify user
         response = self.client.patch(reverse("user"), {
-            "avatar_url": "https://localhost:8000/" + "blabla" * 500
+            "avatar_url": "https://localhost:8000/" + "Hello" * 500
         })
         self.assertEqual(response.status_code, 400)
 

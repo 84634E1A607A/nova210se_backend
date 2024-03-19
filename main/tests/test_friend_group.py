@@ -69,7 +69,7 @@ class FriendGroupControlTests(TestCase):
         Test adding a friend group with repeated name
         """
 
-        # Creat a user
+        # Create a user
         self.assertTrue(create_user(self.client, "u1"))
 
         # Add a group and check
@@ -160,7 +160,7 @@ class FriendGroupControlTests(TestCase):
         # Add groups
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
-        # Creat and login another user
+        # Create and login another user
         self.assertTrue(create_user(self.client, "u2"))
 
         # Get group info
@@ -176,11 +176,11 @@ class FriendGroupControlTests(TestCase):
         Test get a group with repeated group name
         """
 
-        # Creat a user and add group
+        # Create a user and add group
         self.assertTrue(create_user(self.client, "u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
-        # Creat another user and add group
+        # Create another user and add group
         self.assertTrue(create_user(self.client, "u2"))
         self.add_valid_friend_group(user_name="u2", group_name="group1")
 
@@ -201,7 +201,7 @@ class FriendGroupControlTests(TestCase):
         Edit the group name
         """
 
-        # Creat a user and add group
+        # Create a user and add group
         self.assertTrue(create_user(self.client, "u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
@@ -323,7 +323,7 @@ class FriendGroupControlTests(TestCase):
         Delete a group
         """
 
-        # Creat user and group
+        # Create user and group
         self.assertTrue(create_user(self.client, user_name="u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
@@ -344,7 +344,7 @@ class FriendGroupControlTests(TestCase):
         Delete a group with non-existent group name
         """
 
-        # Creat user and group
+        # Create user and group
         self.assertTrue(create_user(self.client, user_name="u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
@@ -365,11 +365,11 @@ class FriendGroupControlTests(TestCase):
         Test deleting others friend group
         """
 
-        # Creat user and group
+        # Create user and group
         self.assertTrue(create_user(self.client, user_name="u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
-        # Creat and login another user
+        # Create and login another user
         self.assertTrue(create_user(self.client, user_name="u2"))
 
         # Try to delete others group
@@ -394,7 +394,7 @@ class FriendGroupControlTests(TestCase):
         Try to delete a user's default group
         """
 
-        # Creat user and group
+        # Create user and group
         self.assertTrue(create_user(self.client, user_name="u1"))
 
         # Try to delete default group
@@ -411,7 +411,7 @@ class FriendGroupControlTests(TestCase):
         List the group of a user
         """
 
-        # Creat user and groups
+        # Create user and groups
         self.assertTrue(create_user(self.client, user_name="u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
         self.add_valid_friend_group(user_name="u1", group_name="group2")
@@ -437,7 +437,7 @@ class FriendGroupControlTests(TestCase):
         List group with different user
         """
 
-        # Creat user and group
+        # Create user and group
         self.assertTrue(create_user(self.client, user_name="u1"))
         self.add_valid_friend_group(user_name="u1", group_name="group1")
 
@@ -452,7 +452,7 @@ class FriendGroupControlTests(TestCase):
             friend_group_struct_by_model(FriendGroup.objects.get(name="group1")),
         ])
 
-        # Creat another user and group
+        # Create another user and group
         self.assertTrue(create_user(self.client, user_name="u2"))
         self.add_valid_friend_group(user_name="u2", group_name="group2")
 

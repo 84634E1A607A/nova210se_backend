@@ -251,7 +251,7 @@ def friend_invitation_struct_by_model(invitation: FriendInvitation):
 
 def friend_struct_by_model(friend: Friend):
     return {
-        "friend": user_struct_by_model(friend.user),
+        "friend": user_struct_by_model(friend.friend),
         "nickname": friend.nickname,
         "group": friend_group_struct_by_model(friend.group)
     }
