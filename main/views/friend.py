@@ -188,12 +188,12 @@ def list_invitation(auth_user: AuthUser):
     return [friend_invitation_struct_by_model(i) for i in invitations]
 
 
-@api(allowed_methods=["POST"])
-def accept_invitation(auth_user: AuthUser, invitation_id: int):
+@api(allowed_methods=["POST", "DELETE"])
+def accept_invitation(method: str, auth_user: AuthUser, invitation_id: int):
     """
-    POST /friend/invitation/<int:invitation_id>
+    POST, DELETE /friend/invitation/<int:invitation_id>
 
-    Accept a friend invitation by its ID and returns empty data.
+    Accept / reject a friend invitation by its ID and returns empty data.
 
     If the invitation is not found, the API returns 400 status code.
 
@@ -210,10 +210,14 @@ def accept_invitation(auth_user: AuthUser, invitation_id: int):
     if invitation.receiver != user:
         return 403, "Forbidden"
 
-    # Create the friendship
-    Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group).save()
-    Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group).save()
-    invitation.delete()
+    if method == "POST":
+        # Create the friendship
+        Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group).save()
+        Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group).save()
+        invitation.delete()
+
+    elif method == "DELETE":
+        invitation.delete()
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])

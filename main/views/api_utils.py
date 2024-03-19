@@ -13,8 +13,8 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
 
     This function never throws, and always returns a JsonResponse (for all but OPTIONS requests).
 
-    The decorated function may have a data (JSON data), request (raw HTTPRequest) or auth_user (AuthUser) parameter
-    with *args, **kwargs, and should return an object or a tuple of (status, string).
+    The decorated function may have a data (JSON data), request (raw HTTPRequest), method (string request method)
+    or auth_user (AuthUser) parameter with *args, **kwargs, and should return an object or a tuple of (status, string).
 
     Any api accepts an OPTIONS request and returns a response with the allowed methods in the "Allow" header.
 
@@ -100,17 +100,21 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
 
             try:
                 parameters = inspect.signature(function).parameters
+
                 if "request" in parameters:
                     kwargs["request"] = request
                 if "auth_user" in parameters:
                     kwargs["auth_user"] = request.user
                 if "data" in parameters:
                     kwargs["data"] = data
+                if "method" in parameters:
+                    kwargs["method"] = request.method
 
                 if "kwargs" in parameters:
                     kwargs["request"] = request
                     kwargs["auth_user"] = request.user
                     kwargs["data"] = data
+                    kwargs["method"] = request.method
 
                 response_data = function(*args, **kwargs)
 
@@ -175,10 +179,10 @@ def check_fields(struct: dict):
                     raise FieldTypeError(key)
 
             parameters = inspect.signature(function).parameters
-            if "request" not in parameters and "request" in kwargs:
-                del kwargs["request"]
-            if "auth_user" not in parameters and "auth_user" in kwargs:
-                del kwargs["auth_user"]
+
+            for key in ["request", "auth_user", "method"]:
+                if key not in parameters and key in kwargs:
+                    del kwargs[key]
 
             kwargs["data"] = data
 
