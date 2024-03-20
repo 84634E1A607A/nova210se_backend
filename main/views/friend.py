@@ -3,7 +3,6 @@ Friend control
 """
 
 from django.contrib.auth.models import User as AuthUser
-from django.http import HttpRequest
 
 from main.models import User, Friend, FriendInvitation, FriendGroup
 from main.views.api_utils import api, check_fields
@@ -101,7 +100,12 @@ def send_invitation(data, auth_user: AuthUser):
 
     "source" can be either "search" (of type string) or a group id (of type int, not implemented yet).
     If the source is "search". Any other value will result in a 400 response.
+
+    Comment should be less than 500 characters, or the API will return 400 status code with an error message.
     """
+
+    if len(data["comment"]) >= 500:
+        return 400, "Comment too long"
 
     user = User.objects.get(auth_user=auth_user)
 
@@ -288,7 +292,7 @@ def update_friend(auth_user: AuthUser, friend_id, data):
     If the friend is not found, the API returns 400 status code; or it checks if "nickname" or "group_id" is provided.
 
     If "nickname" is provided, the API tries to updates the nickname. If the "nickname" is not a string, function
-    returns 400.
+    returns 400. The nickname should be less than 100 characters, or the API returns 400.
 
     If "group_id" is provided, the API tries to updates the group. However, if the group does not exist or does not
     belong to the user, 400 and 403 is returned respectively.
@@ -306,6 +310,9 @@ def update_friend(auth_user: AuthUser, friend_id, data):
     if "nickname" in data:
         if not isinstance(data["nickname"], str):
             return 400, "Invalid nickname"
+
+        if len(data["nickname"]) >= 100:
+            return 400, "Nickname too long"
 
         friend.nickname = data["nickname"]
 

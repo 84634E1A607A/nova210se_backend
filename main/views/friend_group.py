@@ -34,7 +34,7 @@ def add(data, auth_user: AuthUser):
         }
     }
 
-    If the group_name field is empty or is not string, or if the JSON is bad, API returns 400 status code.
+    If the group_name field is empty or is not string, or if its length exceeds 99 chars, API returns 400 status code.
     """
 
     user = User.objects.get(auth_user=auth_user)

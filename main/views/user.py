@@ -91,7 +91,10 @@ def register(data, request: HttpRequest):
     }
 
     The API returns the user information if the registration is successful and will set session cookies for the user.
-    A successful response looks just like a login response.
+    A successful response looks just like a login response. A default avatar base on the user's name is generated
+    and returned in `data:image/png;base64,{base64}` format in the response.
+
+    The username should be within 32 characters and only contain `a-zA-Z0-9-_()@.` characters.
 
     If the username already exists, the API returns an error message with `409 Conflict` status code:
     {

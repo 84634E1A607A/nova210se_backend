@@ -194,6 +194,23 @@ class UserControlTests(TestCase):
         invitation_by_receiver = FriendInvitation.objects.get(receiver=u1)
         self.assertEqual(invitation_by_sender, invitation_by_receiver)
 
+    def test_send_invitation_long_comment(self):
+        """
+        Send an invitation with a long comment
+        """
+
+        self.assertTrue(create_user(self.client, user_name="u1"))
+        self.assertTrue(create_user(self.client, user_name="u2"))
+
+        response = self.client.post(reverse("friend_invite"), {
+            "id": User.objects.get(auth_user__username="u1").id,
+            "source": "search",
+            "comment": "Comment" * 501
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(FriendInvitation.objects.count(), 0)
+
     def test_send_invitation_from_search_non_existent(self):
         """
         Send an invitation to a non-existent user and user
@@ -614,6 +631,13 @@ class UserControlTests(TestCase):
         # Check
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()["ok"])
+
+        response = self.client.patch(reverse("friend_query", kwargs={"friend_user_id": u2.id}), {
+            "nickname": "O" + "H" * 100 + " MY FRIEND"
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Friend.objects.get(friend=u2, user=get_user_by_name("u1")).nickname == "")
 
     def test_update_friend_info_invalid_group_id(self):
         """
