@@ -191,7 +191,7 @@ def list_invitation(auth_user: AuthUser):
 
 
 @api(allowed_methods=["POST", "DELETE"])
-def accept_invitation(method: str, auth_user: AuthUser, invitation_id: int):
+def respond_to_invitation(method: str, auth_user: AuthUser, invitation_id: int):
     """
     POST, DELETE /friend/invitation/<int:invitation_id>
 

@@ -441,7 +441,7 @@ class UserControlTests(TestCase):
 
         # Accept the invitation
         self.assertTrue(login_user(self.client, "u2"))
-        response = self.client.post(reverse("friend_accept_invitation", kwargs={
+        response = self.client.post(reverse("friend_respond_to_invitation", kwargs={
             "invitation_id": FriendInvitation.objects.get(sender=u1).id
         }))
 
@@ -459,7 +459,7 @@ class UserControlTests(TestCase):
 
         # Accept an arbitrary invitation
         self.assertTrue(login_user(self.client, "u1"))
-        response = self.client.post(reverse("friend_accept_invitation", kwargs={
+        response = self.client.post(reverse("friend_respond_to_invitation", kwargs={
             "invitation_id": 32123
         }))
 
@@ -478,7 +478,7 @@ class UserControlTests(TestCase):
 
         # Accept the invitation
         self.assertTrue(login_user(self.client, "u1"))
-        response = self.client.post(reverse("friend_accept_invitation", kwargs={
+        response = self.client.post(reverse("friend_respond_to_invitation", kwargs={
             "invitation_id": FriendInvitation.objects.first().id
         }))
 
@@ -486,6 +486,28 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(Friend.objects.count(), 0)
         self.assertEqual(FriendInvitation.objects.count(), 1)
+
+    def test_reject_invitation(self):
+        """
+        Reject an invitation
+        """
+
+        # Create users and send invitation
+        self.assertTrue(create_user(self.client, "u1"))
+        self.assertTrue(create_user(self.client, "u2"))
+        self.send_invitation_via_search("u1", "u2")
+        self.assertEqual(FriendInvitation.objects.count(), 1)
+
+        # Reject the invitation
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.delete(reverse("friend_respond_to_invitation", kwargs={
+            "invitation_id": FriendInvitation.objects.first().id
+        }))
+
+        # Check
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Friend.objects.count(), 0)
+        self.assertEqual(FriendInvitation.objects.count(), 0)
 
     def test_get_friend_info_with_id(self):
         """
