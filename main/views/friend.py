@@ -177,7 +177,7 @@ def list_invitation(auth_user: AuthUser):
                     "avatar_url": "https://..."
                 },
                 "comment": "Hello",
-                "from": "search"
+                "source": "search"
             },
             ...
         ]
