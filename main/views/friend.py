@@ -6,7 +6,7 @@ from django.contrib.auth.models import User as AuthUser
 
 from main.models import User, Friend, FriendInvitation, FriendGroup
 from main.views.api_utils import api, check_fields
-from main.views.api_struct_by_model import user_struct_by_model, friend_invitation_struct_by_model, \
+from main.views.api_struct_by_model import user_basic_struct_by_model, friend_invitation_struct_by_model, \
     friend_struct_by_model
 
 
@@ -57,7 +57,7 @@ def find(data, auth_user: AuthUser):
         if u == user:
             return []
 
-        return [user_struct_by_model(u)]
+        return [user_basic_struct_by_model(u)]
 
     if "name_contains" in data:
         qs = User.objects.filter(auth_user__username__contains=data["name_contains"])
@@ -66,7 +66,7 @@ def find(data, auth_user: AuthUser):
             if u == user:
                 continue
 
-            result.append(user_struct_by_model(u))
+            result.append(user_basic_struct_by_model(u))
 
         return result
 

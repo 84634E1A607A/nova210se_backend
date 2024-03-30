@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
-from main.views.api_struct_by_model import user_struct_by_model, friend_invitation_struct_by_model, \
+from main.views.api_struct_by_model import user_basic_struct_by_model, friend_invitation_struct_by_model, \
     friend_struct_by_model
 from main.tests.utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
 
@@ -67,7 +67,7 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         u1 = User.objects.get(id=_id1)
-        self.assertEqual(response.json()["data"], [user_struct_by_model(u1)])
+        self.assertEqual(response.json()["data"], [user_basic_struct_by_model(u1)])
 
     def test_find_friend_by_id_fail(self):
         """
@@ -132,7 +132,7 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         u1 = User.objects.get(auth_user=AuthUser.objects.get(username="u1"))
         u11 = User.objects.get(auth_user=AuthUser.objects.get(username="u11"))
-        self.assertEqual(response.json()["data"], [user_struct_by_model(u1), user_struct_by_model(u11)])
+        self.assertEqual(response.json()["data"], [user_basic_struct_by_model(u1), user_basic_struct_by_model(u11)])
 
     def test_find_friend_by_name_with_itself(self):
         """
@@ -150,7 +150,7 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         u1 = User.objects.get(auth_user=AuthUser.objects.get(username="u1"))
-        self.assertEqual(response.json()["data"], [user_struct_by_model(u1)])
+        self.assertEqual(response.json()["data"], [user_basic_struct_by_model(u1)])
 
     def test_find_friend_without_condition(self):
         """

@@ -4,13 +4,12 @@ User Control
 
 import re
 
-from django.middleware.csrf import get_token as csrf_get_token
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
 from main.views.api_utils import api, check_fields
-from main.views.api_struct_by_model import user_struct_by_model
+from main.views.api_struct_by_model import user_basic_struct_by_model, user_detailed_struct_by_model
 from main.views.generate_avatar import generate_random_avatar
 from main.views.exceptions import FieldTypeError, FieldMissingError
 from main.models import User, FriendGroup, Friend
@@ -69,10 +68,7 @@ def login(data, request: HttpRequest):
     # Log user in
     auth_login(request, auth_user)
 
-    # Add CSRF token
-    csrf_get_token(request)
-
-    return user_struct_by_model(User.objects.get(auth_user=auth_user))
+    return user_detailed_struct_by_model(User.objects.get(auth_user=auth_user))
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
@@ -138,9 +134,7 @@ def register(data, request: HttpRequest):
     # Log user in
     auth_login(request, auth_user)
 
-    csrf_get_token(request)
-
-    return user_struct_by_model(user)
+    return user_detailed_struct_by_model(user)
 
 
 @api(allowed_methods=["POST"])
@@ -195,9 +189,7 @@ def get_user_info(request: HttpRequest):
 
     user = User.objects.get(auth_user=request.user)
 
-    csrf_get_token(request)
-
-    return user_struct_by_model(user)
+    return user_detailed_struct_by_model(user)
 
 
 def edit_user_info(data, request: HttpRequest):
@@ -208,16 +200,28 @@ def edit_user_info(data, request: HttpRequest):
     {
         "old_password": "old password",
         "new_password": "new password",     // Optional
+        "user_name": "new user name",       // Optional
+        "email": "new_email@example.com",   // Optional
+        "phone": "15912345678",              // Optional
         "avatar_url": "https://..."          // Optional
     }
 
-    old_password is required if and only if new_password is present. If old_password is incorrect,
+    old_password is required if and only if new_password, email *or* phone is present. If old_password is incorrect,
     the API returns 403 status code.
 
     If new_password is present, the API updates the password and the session cookies (logs the user out and back in).
 
     If the new password doesn't conform to the password requirements, the API returns 400 status code
     with an error message.
+
+    If email is present, the API updates the email. If the email is longer than 100 characters, or it doesn't match
+    the email format, the API returns 400 error code.
+
+    If phone is present, the API updates the phone number. If the phone number is invalid, the API returns 400.
+
+    If email or phone is set to "", this API accepts it.
+
+    Username can be changed, but it must conform to the username requirements. (See register API for details)
 
     If the avatar_url is present, the API updates the avatar URL. If the URL is longer than 490 characters,
     or it doesn't start with http(s)://, the API returns 400 error code.
@@ -231,10 +235,7 @@ def edit_user_info(data, request: HttpRequest):
     user = User.objects.get(auth_user=request.user)
 
     # Check password first
-    if "new_password" in data:
-        if not isinstance(data["new_password"], str):
-            raise FieldTypeError("new_password")
-
+    if "new_password" in data or "phone" in data or "email" in data:
         if "old_password" not in data:
             raise FieldMissingError("old_password")
 
@@ -244,6 +245,10 @@ def edit_user_info(data, request: HttpRequest):
         if not user.auth_user.check_password(data["old_password"]):
             return 403, "Old password is incorrect"
 
+    if "new_password" in data:
+        if not isinstance(data["new_password"], str):
+            raise FieldTypeError("new_password")
+
         # Check new password strength
         if len(data["new_password"]) < 6:
             return 400, "Password must be at least 6 characters long"
@@ -252,6 +257,56 @@ def edit_user_info(data, request: HttpRequest):
             return 400, "Password cannot contain spaces"
 
         user.auth_user.set_password(data["new_password"])
+
+    if "email" in data:
+        if not isinstance(data["email"], str):
+            raise FieldTypeError("email")
+
+        if len(data["email"]) > 100:
+            return 400, "Email cannot be longer than 100 characters"
+
+        # Accept a blank email
+        if data["email"] == "":
+            user.email = ""
+
+        if re.match(r"^[a-zA-Z0-9-_]+@[a-zA-Z0-9-](\.[a-zA-Z0-9]+)+$", data["email"]) is None:
+            return 400, "Invalid email format"
+
+        user.email = data["email"]
+
+    if "phone" in data:
+        if not isinstance(data["phone"], str):
+            raise FieldTypeError("phone")
+
+        # Accept a blank phone number
+        if data["phone"] == "":
+            user.phone = ""
+
+        if len(data["phone"]) != 11:
+            return 400, "Phone number must be 11 digits long"
+
+        if re.match(r"1[0-9]{10}", data["phone"]) is None:
+            return 400, "Invalid phone number format"
+
+        user.phone = data["phone"]
+
+    if "user_name" in data:
+        if not isinstance(data["user_name"], str):
+            raise FieldTypeError("user_name")
+
+        if len(data["user_name"]) > 32:
+            return 400, "User name cannot be longer than 32 characters"
+
+        if not re.match(r"^[a-zA-Z0-9\-_()@.]+$", data["user_name"]):
+            return 400, "Only a-z A-Z 0-9 - _ ( ) @ . are allowed."
+
+        if AuthUser.objects.filter(username=data["user_name"]).exists():
+            return 409, "A user with that name already exists"
+
+        if data["user_name"] == "":
+            return 400, "User name cannot be empty"
+
+        user.auth_user.username = data["user_name"]
 
     if "avatar_url" in data:
         if not isinstance(data["avatar_url"], str):
@@ -273,7 +328,7 @@ def edit_user_info(data, request: HttpRequest):
     user.auth_user.save()
     auth_login(request, user.auth_user)
 
-    return user_struct_by_model(user)
+    return user_detailed_struct_by_model(user)
 
 
 def delete_user(auth_user: AuthUser):
@@ -312,4 +367,4 @@ def get_user_info_by_id(_id: int):
     except User.DoesNotExist:
         return 404, "User not found"
 
-    return user_struct_by_model(user)
+    return user_basic_struct_by_model(user)

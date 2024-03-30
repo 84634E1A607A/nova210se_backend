@@ -17,6 +17,12 @@ class User(models.Model):
     default_group = models.ForeignKey("FriendGroup", on_delete=models.CASCADE,
                                       related_name="user_default_group", null=True)
 
+    # User e-mail
+    email = models.CharField(max_length=100)
+
+    # Phone number
+    phone = models.CharField(max_length=20)
+
 
 class FriendGroup(models.Model):
     """
