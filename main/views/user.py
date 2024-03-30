@@ -5,14 +5,12 @@ User Control
 import re
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.contrib.auth.models import User as AuthUser
 from django.http import HttpRequest
 
 from main.views.api_utils import api, check_fields
-from main.views.api_struct_by_model import user_basic_struct_by_model, user_detailed_struct_by_model
 from main.views.generate_avatar import generate_random_avatar
 from main.views.exceptions import FieldTypeError, FieldMissingError
-from main.models import User, FriendGroup, Friend
+from main.models import User, FriendGroup, Friend, AuthUser
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
@@ -68,7 +66,7 @@ def login(data, request: HttpRequest):
     # Log user in
     auth_login(request, auth_user)
 
-    return user_detailed_struct_by_model(User.objects.get(auth_user=auth_user))
+    return User.objects.get(auth_user=auth_user).to_detailed_struct()
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
@@ -134,7 +132,7 @@ def register(data, request: HttpRequest):
     # Log user in
     auth_login(request, auth_user)
 
-    return user_detailed_struct_by_model(user)
+    return user.to_detailed_struct()
 
 
 @api(allowed_methods=["POST"])
@@ -189,7 +187,7 @@ def get_user_info(request: HttpRequest):
 
     user = User.objects.get(auth_user=request.user)
 
-    return user_detailed_struct_by_model(user)
+    return user.to_detailed_struct()
 
 
 def edit_user_info(data, request: HttpRequest):
@@ -328,7 +326,7 @@ def edit_user_info(data, request: HttpRequest):
     user.auth_user.save()
     auth_login(request, user.auth_user)
 
-    return user_detailed_struct_by_model(user)
+    return user.to_detailed_struct()
 
 
 def delete_user(auth_user: AuthUser):
@@ -367,4 +365,4 @@ def get_user_info_by_id(_id: int):
     except User.DoesNotExist:
         return 404, "User not found"
 
-    return user_basic_struct_by_model(user)
+    return user.to_basic_struct()

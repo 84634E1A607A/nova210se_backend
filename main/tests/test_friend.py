@@ -6,8 +6,6 @@ from django.test import TestCase
 from django.urls import reverse
 
 from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
-from main.views.api_struct_by_model import user_basic_struct_by_model, friend_invitation_struct_by_model, \
-    friend_struct_by_model
 from main.tests.utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
 
 
@@ -67,7 +65,7 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         u1 = User.objects.get(id=_id1)
-        self.assertEqual(response.json()["data"], [user_basic_struct_by_model(u1)])
+        self.assertEqual(response.json()["data"], [u1.to_basic_struct()])
 
     def test_find_friend_by_id_fail(self):
         """
@@ -132,7 +130,7 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         u1 = User.objects.get(auth_user=AuthUser.objects.get(username="u1"))
         u11 = User.objects.get(auth_user=AuthUser.objects.get(username="u11"))
-        self.assertEqual(response.json()["data"], [user_basic_struct_by_model(u1), user_basic_struct_by_model(u11)])
+        self.assertEqual(response.json()["data"], [u1.to_basic_struct(), u11.to_basic_struct()])
 
     def test_find_friend_by_name_with_itself(self):
         """
@@ -150,7 +148,7 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         u1 = User.objects.get(auth_user=AuthUser.objects.get(username="u1"))
-        self.assertEqual(response.json()["data"], [user_basic_struct_by_model(u1)])
+        self.assertEqual(response.json()["data"], [u1.to_basic_struct()])
 
     def test_find_friend_without_condition(self):
         """
@@ -431,8 +429,8 @@ class UserControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()["data"]), 2)
         self.assertEqual(response.json()["data"], [
-            friend_invitation_struct_by_model(FriendInvitation.objects.get(sender=u2)),
-            friend_invitation_struct_by_model(FriendInvitation.objects.get(sender=u3))
+            FriendInvitation.objects.get(sender=u2).to_struct(),
+            FriendInvitation.objects.get(sender=u3).to_struct()
         ])
 
         # Login to u2 and try to get the invitation list
@@ -752,11 +750,11 @@ class UserControlTests(TestCase):
         f1 = Friend.objects.get(friend=u1)
         response = self.client.get(reverse("friend_list_friend"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["data"], [friend_struct_by_model(f1)])
+        self.assertEqual(response.json()["data"], [f1.to_struct()])
 
         # Create friendship again and list
         self.create_friendship("ur", "u2")
         f2 = Friend.objects.get(friend=u2)
         response = self.client.get(reverse("friend_list_friend"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["data"], [friend_struct_by_model(f1), friend_struct_by_model(f2)])
+        self.assertEqual(response.json()["data"], [f1.to_struct(), f2.to_struct()])

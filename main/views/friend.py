@@ -2,12 +2,8 @@
 Friend control
 """
 
-from django.contrib.auth.models import User as AuthUser
-
-from main.models import User, Friend, FriendInvitation, FriendGroup
+from main.models import User, AuthUser, Friend, FriendInvitation, FriendGroup
 from main.views.api_utils import api, check_fields
-from main.views.api_struct_by_model import user_basic_struct_by_model, friend_invitation_struct_by_model, \
-    friend_struct_by_model
 
 
 @api(allowed_methods=["POST"])
@@ -57,7 +53,7 @@ def find(data, auth_user: AuthUser):
         if u == user:
             return []
 
-        return [user_basic_struct_by_model(u)]
+        return [u.to_basic_struct()]
 
     if "name_contains" in data:
         qs = User.objects.filter(auth_user__username__contains=data["name_contains"])
@@ -66,7 +62,7 @@ def find(data, auth_user: AuthUser):
             if u == user:
                 continue
 
-            result.append(user_basic_struct_by_model(u))
+            result.append(u.to_basic_struct())
 
         return result
 
@@ -129,7 +125,7 @@ def send_invitation(data, auth_user: AuthUser):
         f.save()
         Friend(user=friend, friend=user, nickname="", group=friend.default_group).save()
         FriendInvitation.objects.filter(sender=friend, receiver=user).delete()
-        return friend_struct_by_model(f)
+        return f.to_struct()
 
     # Check invitation source
     if "source" not in data:
@@ -191,7 +187,7 @@ def list_invitation(auth_user: AuthUser):
     user = User.objects.get(auth_user=auth_user)
     invitations = FriendInvitation.objects.filter(receiver=user)
 
-    return [friend_invitation_struct_by_model(i) for i in invitations]
+    return [i.to_struct() for i in invitations]
 
 
 @api(allowed_methods=["POST", "DELETE"])
@@ -223,7 +219,7 @@ def respond_to_invitation(method: str, auth_user: AuthUser, invitation_id: int):
         friend.save()
         Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group).save()
         invitation.delete()
-        return friend_struct_by_model(friend)
+        return friend.to_struct()
 
     elif method == "DELETE":
         invitation.delete()
@@ -280,7 +276,7 @@ def get_friend_info(auth_user: AuthUser, friend_id):
     except Friend.DoesNotExist:
         return 404, "Friend not found"
 
-    return friend_struct_by_model(friend)
+    return friend.to_struct()
 
 
 def update_friend(auth_user: AuthUser, friend_id, data):
@@ -331,7 +327,7 @@ def update_friend(auth_user: AuthUser, friend_id, data):
         friend.group = group
 
     friend.save()
-    return friend_struct_by_model(friend)
+    return friend.to_struct()
 
 
 def delete_friend(auth_user: AuthUser, friend_id):
@@ -367,4 +363,4 @@ def list_friend(auth_user: AuthUser):
 
     friends = Friend.objects.filter(user__auth_user=auth_user)
 
-    return [friend_struct_by_model(f) for f in friends]
+    return [f.to_struct() for f in friends]

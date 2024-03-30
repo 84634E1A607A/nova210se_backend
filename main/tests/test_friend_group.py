@@ -7,7 +7,6 @@ from django.urls import reverse
 
 from main.models import FriendGroup
 from main.tests.utils import create_user, get_user_by_name, JsonClient, login_user
-from main.views.api_struct_by_model import friend_group_struct_by_model
 
 
 class FriendGroupControlTests(TestCase):
@@ -136,7 +135,7 @@ class FriendGroupControlTests(TestCase):
         response = self.client.get(reverse("friend_group_query", kwargs={"group_id": group.id}))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["data"], friend_group_struct_by_model(group))
+        self.assertEqual(response.json()["data"], group.to_struct())
 
     def test_get_friend_group_info_by_non_existent_group_name(self):
         """
@@ -428,9 +427,9 @@ class FriendGroupControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u1"), default=False).count(), 2)
         self.assertEqual(response.json()["data"], [
-            friend_group_struct_by_model(default_group),
-            friend_group_struct_by_model(group1),
-            friend_group_struct_by_model(group2),
+            default_group.to_struct(),
+            group1.to_struct(),
+            group2.to_struct(),
         ])
 
     def test_list_group_with_multi_users(self):
@@ -449,8 +448,8 @@ class FriendGroupControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u1"), default=False).count(), 1)
         self.assertEqual(response.json()["data"], [
-            friend_group_struct_by_model(FriendGroup.objects.get(user=get_user_by_name("u1"), default=True)),
-            friend_group_struct_by_model(FriendGroup.objects.get(name="group1")),
+            FriendGroup.objects.get(user=get_user_by_name("u1"), default=True).to_struct(),
+            FriendGroup.objects.get(name="group1").to_struct(),
         ])
 
         # Create another user and group
@@ -464,6 +463,6 @@ class FriendGroupControlTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(FriendGroup.objects.filter(user=get_user_by_name("u2"), default=False).count(), 1)
         self.assertEqual(response.json()["data"], [
-            friend_group_struct_by_model(FriendGroup.objects.get(user=get_user_by_name("u2"), default=True)),
-            friend_group_struct_by_model(FriendGroup.objects.get(name="group2", )),
+            FriendGroup.objects.get(user=get_user_by_name("u2"), default=True).to_struct(),
+            FriendGroup.objects.get(name="group2").to_struct(),
         ])

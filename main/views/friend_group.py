@@ -2,11 +2,8 @@
 Friend group control
 """
 
-from django.contrib.auth.models import User as AuthUser
-
-from main.models import User, FriendGroup
+from main.models import User, AuthUser, FriendGroup
 from main.views.api_utils import api, check_fields
-from main.views.api_struct_by_model import friend_group_struct_by_model
 
 
 @api(allowed_methods=["POST"])
@@ -49,7 +46,7 @@ def add(data, auth_user: AuthUser):
     group = FriendGroup(user=user, name=data["group_name"], default=False)
     group.save()
 
-    return friend_group_struct_by_model(group)
+    return group.to_struct()
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
@@ -97,7 +94,7 @@ def get_info_by_id(auth_user: AuthUser, group_id: int):
     if group.user.auth_user != auth_user:
         return 403, "Forbidden"
 
-    return friend_group_struct_by_model(group)
+    return group.to_struct()
 
 
 @check_fields({
@@ -138,7 +135,7 @@ def edit(data, auth_user: AuthUser, group_id: int):
     group.name = data["group_name"]
     group.save()
 
-    return friend_group_struct_by_model(group)
+    return group.to_struct()
 
 
 def delete(auth_user: AuthUser, group_id: int):
@@ -203,4 +200,4 @@ def list_groups(auth_user: AuthUser):
     user = User.objects.get(auth_user=auth_user)
     groups = FriendGroup.objects.filter(user=user)
 
-    return [friend_group_struct_by_model(g) for g in groups]
+    return [g.to_struct() for g in groups]
