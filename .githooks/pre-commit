@@ -1,0 +1,7 @@
+#! /bin/sh
+
+set -e
+
+pycodestyle --config pycodestyle.cfg .
+python manage.py test
+

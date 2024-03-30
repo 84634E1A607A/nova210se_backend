@@ -28,3 +28,7 @@ You may want to override:
 - `DEBUG` to `True` so that detailed server error (500) message is printed
 - `CORS_ORIGIN_ALLOW_ALL` to `True` so that local frontend can access the API
 - `ALLOWED_HOSTS` to `["*"]` so that the server can be accessed from any host
+
+### Add pre-commit hook
+
+Use `git config core.hooksPath .githooks` to add pre-commit hook.
