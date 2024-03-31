@@ -9,7 +9,7 @@ from django.http import HttpRequest
 
 from main.views.api_utils import api, check_fields
 from main.views.generate_avatar import generate_random_avatar
-from main.views.exceptions import FieldTypeError, FieldMissingError
+from main.exceptions import FieldTypeError, FieldMissingError
 from main.models import User, FriendGroup, Friend, AuthUser
 
 
@@ -71,7 +71,6 @@ def login(data, request: HttpRequest):
 
 @api(allowed_methods=["POST"], needs_auth=False)
 @check_fields({
-    "user_name": str,
     "password": str
 })
 def register(data, request: HttpRequest):
@@ -99,22 +98,11 @@ def register(data, request: HttpRequest):
     If user_name or password field is empty or is not string, or if the JSON is bad, API returns 400 status code.
     """
 
+    User.validate_username(data.get("user_name"))
     user_name: str = data["user_name"]
+
+    User.validate_password(data.get("password"))
     password: str = data["password"]
-
-    # Check if user already exists
-    if AuthUser.objects.filter(username=user_name).exists():
-        return 409, "User already exists"
-
-    # Check username non-empty
-    if user_name == "":
-        return 400, "User name cannot be empty"
-
-    if len(user_name) > 32:
-        return 400, "User name cannot be longer than 32 characters"
-
-    if not re.match(r"^[a-zA-Z0-9\-_()@.]+$", user_name):
-        return 400, "Only a-z A-Z 0-9 - _ ( ) @ . are allowed."
 
     # Create user
     auth_user = AuthUser.objects.create_user(username=user_name, password=password)
@@ -244,80 +232,30 @@ def edit_user_info(data, request: HttpRequest):
             return 403, "Old password is incorrect"
 
     if "new_password" in data:
-        if not isinstance(data["new_password"], str):
-            raise FieldTypeError("new_password")
-
-        # Check new password strength
-        if len(data["new_password"]) < 6:
-            return 400, "Password must be at least 6 characters long"
-
-        if " " in data["new_password"]:
-            return 400, "Password cannot contain spaces"
+        User.validate_password(data.get("new_password"))
 
         user.auth_user.set_password(data["new_password"])
 
     if "email" in data:
-        if not isinstance(data["email"], str):
-            raise FieldTypeError("email")
-
-        if len(data["email"]) > 100:
-            return 400, "Email cannot be longer than 100 characters"
-
-        # Accept a blank email
-        if data["email"] == "":
-            user.email = ""
-
-        if re.match(r"^[a-zA-Z0-9-_]+@[a-zA-Z0-9-](\.[a-zA-Z0-9]+)+$", data["email"]) is None:
-            return 400, "Invalid email format"
+        User.validate_email(data.get("email"))
 
         user.email = data["email"]
 
     if "phone" in data:
-        if not isinstance(data["phone"], str):
-            raise FieldTypeError("phone")
-
-        # Accept a blank phone number
-        if data["phone"] == "":
-            user.phone = ""
-
-        if len(data["phone"]) != 11:
-            return 400, "Phone number must be 11 digits long"
-
-        if re.match(r"1[0-9]{10}", data["phone"]) is None:
-            return 400, "Invalid phone number format"
+        User.validate_phone(data.get("phone"))
 
         user.phone = data["phone"]
 
     if "user_name" in data:
-        if not isinstance(data["user_name"], str):
-            raise FieldTypeError("user_name")
-
-        if len(data["user_name"]) > 32:
-            return 400, "User name cannot be longer than 32 characters"
-
-        if not re.match(r"^[a-zA-Z0-9\-_()@.]+$", data["user_name"]):
-            return 400, "Only a-z A-Z 0-9 - _ ( ) @ . are allowed."
-
-        if AuthUser.objects.filter(username=data["user_name"]).exists():
-            return 409, "A user with that name already exists"
-
-        if data["user_name"] == "":
-            return 400, "User name cannot be empty"
+        User.validate_username(data.get("user_name"))
 
         user.auth_user.username = data["user_name"]
 
     if "avatar_url" in data:
-        if not isinstance(data["avatar_url"], str):
-            raise FieldTypeError("avatar_url")
-
-        if len(data["avatar_url"]) > 490:
-            return 400, "Avatar URL cannot be longer than 490 characters"
+        User.validate_avatar_url(data.get("avatar_url"))
 
         if data["avatar_url"] == "":
             data["avatar_url"] = generate_random_avatar(user.auth_user.username)
-
-        elif not re.match(r"^https?://", data["avatar_url"]):
-            return 400, "Invalid avatar URL"
 
         user.avatar_url = data["avatar_url"]
 

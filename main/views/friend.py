@@ -44,6 +44,9 @@ def find(data, auth_user: AuthUser):
     user = User.objects.get(auth_user=auth_user)
 
     if "id" in data:
+        if not isinstance(data["id"], int):
+            return 400, "Invalid user ID"
+
         try:
             u = User.objects.get(id=data["id"])
         except User.DoesNotExist:
@@ -56,6 +59,9 @@ def find(data, auth_user: AuthUser):
         return [u.to_basic_struct()]
 
     if "name_contains" in data:
+        if not isinstance(data["name_contains"], str):
+            return 400, "Invalid name_contains"
+
         qs = User.objects.filter(auth_user__username__contains=data["name_contains"])
         result = []
         for u in qs:
@@ -71,8 +77,7 @@ def find(data, auth_user: AuthUser):
 
 @api(allowed_methods=["POST"])
 @check_fields({
-    "id": int,
-    "comment": str
+    "id": int
 })
 def send_invitation(data, auth_user: AuthUser):
     """
@@ -100,8 +105,7 @@ def send_invitation(data, auth_user: AuthUser):
     Comment should be less than 500 characters, or the API will return 400 status code with an error message.
     """
 
-    if len(data["comment"]) >= 500:
-        return 400, "Comment too long"
+    FriendInvitation.validate_comment(data.get("comment"))
 
     user = User.objects.get(auth_user=auth_user)
 
@@ -304,12 +308,7 @@ def update_friend(auth_user: AuthUser, friend_id, data):
         return 400, "Friend not found"
 
     if "nickname" in data:
-        if not isinstance(data["nickname"], str):
-            return 400, "Invalid nickname"
-
-        if len(data["nickname"]) >= 100:
-            return 400, "Nickname too long"
-
+        Friend.validate_nickname(data["nickname"])
         friend.nickname = data["nickname"]
 
     if "group_id" in data:

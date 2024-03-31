@@ -3,7 +3,7 @@ import json
 
 from django.http import HttpResponse, JsonResponse, HttpRequest
 from django.conf import settings
-from main.views.exceptions import FieldMissingError, FieldTypeError
+from main.exceptions import FieldMissingError, FieldTypeError, ClientSideError
 
 
 def api(allowed_methods: list[str] = None, needs_auth: bool = True):
@@ -82,7 +82,7 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                 })
 
             # Try to parse JSON body (if any)
-            data = None
+            data: dict | None = None
             if request.method != "GET" and request.content_type != "":
                 if request.content_type != "application/json":
                     return JsonResponse(status=400, data={
@@ -130,16 +130,10 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                     "data": response_data,
                 })
 
-            except FieldMissingError as e:
-                return JsonResponse(status=400, data={
+            except ClientSideError as e:
+                return JsonResponse(status=e.code, data={
                     "ok": False,
-                    "error": f"Field \"{e.key}\" is missing"
-                })
-
-            except FieldTypeError as e:
-                return JsonResponse(status=400, data={
-                    "ok": False,
-                    "error": f"Data type error for key \"{e.key}\""
+                    "error": e.get_message()
                 })
 
             except Exception as e:

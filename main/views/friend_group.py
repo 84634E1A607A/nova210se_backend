@@ -7,9 +7,6 @@ from main.views.api_utils import api, check_fields
 
 
 @api(allowed_methods=["POST"])
-@check_fields({
-    "group_name": str
-})
 def add(data, auth_user: AuthUser):
     """
     POST /friend/group/add
@@ -36,11 +33,7 @@ def add(data, auth_user: AuthUser):
 
     user = User.objects.get(auth_user=auth_user)
 
-    if data["group_name"] == "":
-        return 400, "Group name cannot be empty"
-
-    if len(data["group_name"]) > 99:
-        return 400, "Group name too long"
+    FriendGroup.validate_name(data["group_name"])
 
     # Create the group
     group = FriendGroup(user=user, name=data["group_name"], default=False)
@@ -126,11 +119,7 @@ def edit(data, auth_user: AuthUser, group_id: int):
     if group.default:
         return 400, "Cannot change name of default group"
 
-    if data["group_name"] == "":
-        return 400, "Group name cannot be empty"
-
-    if len(data["group_name"]) > 99:
-        return 400, "Group name too long"
+    FriendGroup.validate_name(data["group_name"])
 
     group.name = data["group_name"]
     group.save()
