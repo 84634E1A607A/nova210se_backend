@@ -72,6 +72,8 @@ def api(allowed_methods: list[str] = None, needs_auth: bool = True):
                 return JsonResponse(status=405, data={
                     "ok": False,
                     "error": "Method not allowed"
+                }, headers={
+                    "Allow": ", ".join(allowed_methods)
                 })
 
             # Check for authentication
