@@ -7,6 +7,7 @@ from main.exceptions import FieldMissingError, FieldTypeError, ClientSideError
 
 
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@([A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
+DATA_URL_REGEX = re.compile(r"^data:image/[a-zA-Z]+;base64,[a-zA-Z0-9+/=]+$")
 
 
 class User(models.Model):
@@ -75,9 +76,12 @@ class User(models.Model):
         if not isinstance(avatar_url, str):
             raise FieldTypeError("avatar_url")
 
-        if re.match(r"^data:image/[a-zA-Z]+;base64,[a-zA-Z0-9+/=]+$", avatar_url) is not None:
+        if DATA_URL_REGEX.match(avatar_url) is not None:
             if len(avatar_url) > 100000:
                 raise ClientSideError("Avatar size too large")
+
+            # Accept an avatar URL
+            return
 
         if avatar_url == "":
             return
@@ -114,7 +118,7 @@ class User(models.Model):
         if len(email) > 100:
             raise ClientSideError("Email too long")
 
-        if re.match(EMAIL_REGEX, email) is None:
+        if EMAIL_REGEX.match(email) is None:
             raise ClientSideError("Invalid email format")
 
     # Phone number
