@@ -6,6 +6,9 @@ from django.contrib.auth.models import User as AuthUser
 from main.exceptions import FieldMissingError, FieldTypeError, ClientSideError
 
 
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@([A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
+
+
 class User(models.Model):
     """
     User Model, stores user information
@@ -111,7 +114,7 @@ class User(models.Model):
         if len(email) > 100:
             raise ClientSideError("Email too long")
 
-        if re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email) is None:
+        if re.match(EMAIL_REGEX, email) is None:
             raise ClientSideError("Invalid email format")
 
     # Phone number
