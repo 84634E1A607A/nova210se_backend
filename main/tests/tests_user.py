@@ -6,7 +6,7 @@ from main.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from main.tests.utils import create_user, logout_user, JsonClient
+from main.tests.utils import create_user, logout_user, JsonClient, get_user_by_name
 
 
 class UserControlTests(TestCase):
@@ -397,3 +397,147 @@ class UserControlTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertFalse(response.json()["ok"])
+
+    def test_valid_email(self):
+        """
+        Test action related to email
+        """
+
+        # Create user
+        self.assertTrue(create_user(self.client))
+        self.assertEqual(get_user_by_name("test_user").email, "")
+
+        # Try valid email 1
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": "test@gmail.com"
+        })
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_by_name("test_user").email, "test@gmail.com")
+
+        # Try invalid email 1
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": "@gmail.com"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").email, "test@gmail.com")
+
+        # Try invalid email 2
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": "  @gmail.com"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").email, "test@gmail.com")
+
+        # Try invalid email 3
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": "abc@gma il.com"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").email, "test@gmail.com")
+
+        # Try valid email 2
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": "+-..+-.-+..++-+.-.+123asd6+.-@gmail.com"
+        })
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_by_name("test_user").email, "+-..+-.-+..++-+.-.+123asd6+.-@gmail.com")
+
+        # Try valid email 3
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": "+++++++++++@gmail--.com.abc"
+        })
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_by_name("test_user").email, "+++++++++++@gmail--.com.abc")
+
+        # Try invalid email 4
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": ("abc"*100)+"@gmail.com"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").email, "+++++++++++@gmail--.com.abc")
+
+        # Try invalid email 5
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "email": 1232123
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").email, "+++++++++++@gmail--.com.abc")
+
+    def test_valid_phone(self):
+        """
+        Test action related to phone
+        """
+
+        # Create user
+        self.assertTrue(create_user(self.client))
+        self.assertEqual(get_user_by_name("test_user").phone, "")
+
+        # Try valid phone 1
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "phone": "12345678910"
+        })
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_by_name("test_user").phone, "12345678910")
+
+        # Try invalid phone 1
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "phone": "1111111111a"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").phone, "12345678910")
+
+        # Try invalid phone 2
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "phone": " 1111111111"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").phone, "12345678910")
+
+        # Try invalid phone 3
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "phone": "21111111111"
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").phone, "12345678910")
+
+        # Try invalid phone 4
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "phone": 21111111111
+        })
+        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(get_user_by_name("test_user").phone, "12345678910")
+
+        # Try valid phone 2
+        response = self.client.patch(reverse("user"), {
+            "old_password": "test_password",
+            "phone": "11111111111"
+        })
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_by_name("test_user").phone, "11111111111")

@@ -35,7 +35,9 @@ def login(data, request: HttpRequest):
         "data": {
             "id": 1,
             "user_name": "user",
-            "avatar_url": "https://..."
+            "avatar_url": "https://...",
+            "email": "",
+            "phone": ""
         }
     }
 

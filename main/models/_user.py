@@ -140,8 +140,10 @@ class User(models.Model):
         if phone == "":
             return
 
-        if len(phone) != 11:
+        if len(phone) > 11:
             raise ClientSideError("Phone number too long")
+        elif len(phone) < 11:
+            raise ClientSideError("Phone number too short")
 
         if re.match(r"^1[0-9]+$", phone) is None:
             raise ClientSideError("Invalid phone number format")
