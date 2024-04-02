@@ -9,7 +9,7 @@ from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
 from main.tests.utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
 
 
-class UserControlTests(TestCase):
+class FriendControlTests(TestCase):
     def setUp(self):
         self.client = JsonClient()
 
@@ -34,18 +34,14 @@ class UserControlTests(TestCase):
 
     def create_friendship(self, u1_name: str, u2_name: str):
         """
-        Create a friendship between u1 and u2 directly in database.
+        Create a friendship between u1 and u2. After this function, user will be logged out.
 
         :param u1_name: first user's name, this user must exist
         :param u2_name: second user's name, this user must also exist
         """
 
-        u1 = get_user_by_name(u1_name)
-        u2 = get_user_by_name(u2_name)
-        Friend(user=u1, friend=u2, nickname="", group=u1.default_group).save()
-        Friend(user=u2, friend=u1, nickname="", group=u2.default_group).save()
-        self.assertEqual(Friend.objects.get(user=u2, friend=u1).friend, u1)
-        self.assertEqual(Friend.objects.get(user=u1, friend=u2).friend, u2)
+        self.send_invitation_via_search(u1_name, u2_name)
+        self.send_invitation_via_search(u2_name, u1_name)
 
     def test_find_friend_by_id(self):
         """
@@ -747,6 +743,8 @@ class UserControlTests(TestCase):
 
         # Create friendship and list again
         self.create_friendship("ur", "u1")
+
+        self.assertTrue(login_user(self.client, "ur"))
         f1 = Friend.objects.get(friend=u1)
         response = self.client.get(reverse("friend_list_friend"))
         self.assertEqual(response.status_code, 200)
@@ -754,6 +752,8 @@ class UserControlTests(TestCase):
 
         # Create friendship again and list
         self.create_friendship("ur", "u2")
+
+        self.assertTrue(login_user(self.client, "ur"))
         f2 = Friend.objects.get(friend=u2)
         response = self.client.get(reverse("friend_list_friend"))
         self.assertEqual(response.status_code, 200)
