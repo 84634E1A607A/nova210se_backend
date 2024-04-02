@@ -41,7 +41,7 @@ class Friend(models.Model):
     """
     Friend group of the friend
     """
-    group = models.ForeignKey(FriendGroup, on_delete=models.CASCADE, related_name="friend_friend_group")
+    group = models.ForeignKey(FriendGroup, on_delete=models.RESTRICT, related_name="friend_friend_group")
 
     def to_struct(self):
         return {

@@ -2,7 +2,7 @@
 Friend group control
 """
 
-from main.models import User, AuthUser, FriendGroup
+from main.models import User, AuthUser, Friend, FriendGroup
 from main.views.api_utils import api, check_fields
 
 
@@ -142,6 +142,8 @@ def delete(auth_user: AuthUser, group_id: int):
 
     If the group does not belong to the user, the API returns 403 status code.
 
+    If the group is non-empty, all users in the group will be moved to the default group.
+
     The default group cannot be deleted. If an attempt is made to delete the default group,
     this API will return 400 status code.
     """
@@ -156,6 +158,15 @@ def delete(auth_user: AuthUser, group_id: int):
 
     if group.default:
         return 400, "Default group cannot be deleted"
+
+    # Move all users in the group to the default group
+    friends = Friend.objects.filter(group=group)
+
+    if friends.exists():
+        default_group = FriendGroup.objects.get(user=group.user, default=True)
+        for friend in friends:
+            friend.group = default_group
+            friend.save()
 
     group.delete()
 
