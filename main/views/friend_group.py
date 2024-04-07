@@ -7,7 +7,7 @@ from main.views.api_utils import api, check_fields
 
 
 @api(allowed_methods=["POST"])
-def add(data, auth_user: AuthUser):
+def add(data: dict, auth_user: AuthUser):
     """
     POST /friend/group/add
 
@@ -31,19 +31,19 @@ def add(data, auth_user: AuthUser):
     If the group_name field is empty or is not string, or if its length exceeds 99 chars, API returns 400 status code.
     """
 
-    user = User.objects.get(auth_user=auth_user)
+    user: User = User.objects.get(auth_user=auth_user)
 
     FriendGroup.validate_name(data["group_name"])
 
     # Create the group
-    group = FriendGroup(user=user, name=data["group_name"], default=False)
+    group: FriendGroup = FriendGroup(user=user, name=data["group_name"], default=False)
     group.save()
 
     return group.to_struct()
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
-def query(data, method: str, auth_user: AuthUser, group_id: int):
+def query(data: dict, method: str, auth_user: AuthUser, group_id: int):
     """
     GET, PATCH, DELETE /friend/group/<int:group_id>
 
@@ -79,7 +79,7 @@ def get_info_by_id(auth_user: AuthUser, group_id: int):
     """
 
     try:
-        group = FriendGroup.objects.get(id=group_id)
+        group: FriendGroup = FriendGroup.objects.get(id=group_id)
     except FriendGroup.DoesNotExist:
         return 404, "Group not found"
 
@@ -93,7 +93,7 @@ def get_info_by_id(auth_user: AuthUser, group_id: int):
 @check_fields({
     "group_name": str
 })
-def edit(data, auth_user: AuthUser, group_id: int):
+def edit(data: dict, auth_user: AuthUser, group_id: int):
     """
     PATCH /friend/group/<int:group_id>
 
@@ -109,7 +109,7 @@ def edit(data, auth_user: AuthUser, group_id: int):
     """
 
     try:
-        group = FriendGroup.objects.get(id=group_id)
+        group: FriendGroup = FriendGroup.objects.get(id=group_id)
     except FriendGroup.DoesNotExist:
         return 400, "Group not found"
 
@@ -163,7 +163,7 @@ def delete(auth_user: AuthUser, group_id: int):
     friends = Friend.objects.filter(group=group)
 
     if friends.exists():
-        default_group = FriendGroup.objects.get(user=group.user, default=True)
+        default_group: FriendGroup = FriendGroup.objects.get(user=group.user, default=True)
         for friend in friends:
             friend.group = default_group
             friend.save()
@@ -197,7 +197,7 @@ def list_groups(auth_user: AuthUser):
     }
     """
 
-    user = User.objects.get(auth_user=auth_user)
+    user: User = User.objects.get(auth_user=auth_user)
     groups = FriendGroup.objects.filter(user=user)
 
     return [g.to_struct() for g in groups]

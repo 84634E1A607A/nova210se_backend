@@ -166,7 +166,10 @@ def check_fields(struct: dict):
     """
 
     def decorator(function):
-        def decorated(data, **kwargs):
+        def decorated(data: any, **kwargs):
+            if not isinstance(data, dict):
+                raise ClientSideError("Data should be a JSON dictionary")
+
             for key, value in struct.items():
                 if key not in data:
                     raise FieldMissingError(key)
