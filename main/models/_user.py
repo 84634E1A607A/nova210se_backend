@@ -148,6 +148,36 @@ class User(models.Model):
         if re.match(r"^1[0-9]+$", phone) is None:
             raise ClientSideError("Invalid phone number format")
 
+    system = models.BooleanField(default=False)
+
+    __deleted = None
+
+    @staticmethod
+    def magic_user_deleted():
+        if User.__deleted is None:
+            try:
+                User.__deleted = User.objects.get(auth_user__username="#DELETED")
+            except User.DoesNotExist:
+                auth_user = AuthUser.objects.create_user(username="#DELETED", password="whatever")
+                User.__deleted = User(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
+                User.__deleted.save()
+
+        return User.__deleted
+
+    __system = None
+
+    @staticmethod
+    def magic_user_system():
+        if User.__system is None:
+            try:
+                User.__system = User.objects.get(auth_user__username="#SYSTEM")
+            except User.DoesNotExist:
+                auth_user = AuthUser.objects.create_user(username="#SYSTEM", password="whatever")
+                User.__system = User(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
+                User.__system.save()
+
+        return User.__system
+
     def to_detailed_struct(self):
         """
         Convert a User model to detailed user information JSON object.
