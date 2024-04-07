@@ -257,7 +257,7 @@ class UserControlTests(TestCase):
             "new_password": "new_password"
         })
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(User.objects.first().auth_user.check_password("new_password"))
+        self.assertTrue(User.objects.get(auth_user__username="test_user").auth_user.check_password("new_password"))
 
     def test_modify_user_password_fail(self):
         """
@@ -273,22 +273,22 @@ class UserControlTests(TestCase):
             "new_password": "new_password"
         })
         self.assertEqual(response.status_code, 403)
-        self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
+        self.assertFalse(User.objects.get(auth_user__username="test_user").auth_user.check_password("new_password"))
 
         response = self.client.patch(reverse("user"), {
             "new_password": "new_password"
         })
         self.assertEqual(response.status_code, 400)
-        self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
+        self.assertFalse(User.objects.get(auth_user__username="test_user").auth_user.check_password("new_password"))
 
         response = self.client.patch(reverse("user"), {
             "old_password": 1234567,
             "new_password": "new_password"
         })
         self.assertEqual(response.status_code, 400)
-        self.assertFalse(User.objects.first().auth_user.check_password("new_password"))
+        self.assertFalse(User.objects.get(auth_user__username="test_user").auth_user.check_password("new_password"))
 
-        self.assertTrue(User.objects.first().auth_user.check_password("test_password"))
+        self.assertTrue(User.objects.get(auth_user__username="test_user").auth_user.check_password("test_password"))
 
     def test_modify_user_password_too_short(self):
         """
@@ -304,7 +304,7 @@ class UserControlTests(TestCase):
             "new_password": "1234"
         })
         self.assertEqual(response.status_code, 400)
-        self.assertFalse(User.objects.first().auth_user.check_password("1234"))
+        self.assertFalse(User.objects.get(auth_user__username="test_user").auth_user.check_password("1234"))
 
     def test_modify_user_password_with_whitespace(self):
         """
@@ -317,10 +317,10 @@ class UserControlTests(TestCase):
         # Modify user
         response = self.client.patch(reverse("user"), {
             "old_password": "test_password",
-            "new_password": "1 2 3 4 5 6 7 8 9"
+            "new_password": "1 2 3 4 5"
         })
         self.assertEqual(response.status_code, 400)
-        self.assertFalse(User.objects.first().auth_user.check_password("1 2 3 4 5 6 7 8 9"))
+        self.assertFalse(User.objects.get(auth_user__username="test_user").auth_user.check_password("1 2 3 4 5"))
 
     def test_modify_user_avatar(self):
         """
