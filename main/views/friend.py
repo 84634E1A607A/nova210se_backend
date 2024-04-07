@@ -2,12 +2,12 @@
 Friend control
 """
 
-from main.models import User, AuthUser, Friend, FriendInvitation, FriendGroup
+from main.models import User, AuthUser, Friend, FriendInvitation, FriendGroup, Chat, UserChatRelation, ChatMessage
 from main.views.api_utils import api, check_fields
 
 
 @api(allowed_methods=["POST"])
-def find(data, auth_user: AuthUser):
+def find(data: dict, auth_user: AuthUser):
     """
     POST /friend/find
 
@@ -56,13 +56,17 @@ def find(data, auth_user: AuthUser):
         if u == user:
             return []
 
+        # Do not return a system user
+        if u.system:
+            return []
+
         return [u.to_basic_struct()]
 
     if "name_contains" in data:
         if not isinstance(data["name_contains"], str):
             return 400, "Invalid name_contains"
 
-        qs = User.objects.filter(auth_user__username__contains=data["name_contains"])
+        qs = User.objects.filter(auth_user__username__contains=data["name_contains"], system=False)
         result = []
         for u in qs:
             if u == user:
@@ -75,11 +79,44 @@ def find(data, auth_user: AuthUser):
     return 400, "No filter provided"
 
 
+def create_friendship(user: User, invitation: FriendInvitation) -> Friend:
+    """
+    Create a friendship between two users.
+
+    This function creates two Friend objects, one for each user, and returns the created friendship.
+
+    It also creates a chat for the new friendship and sends a "friend added" message to the chat.
+
+    Invitation object is deleted after the friendship is created.
+    """
+
+    sender = invitation.sender
+
+    # Create the friendship
+    friend = Friend(user=user, friend=sender, nickname="", group=user.default_group)
+    friend.save()
+    Friend(user=sender, friend=user, nickname="", group=sender.default_group).save()
+    invitation.delete()
+
+    # Create a chat for the new friendship
+    chat = Chat.objects.create(owner=user, name="")
+    chat.save()
+    chat.members.set([user, sender])
+    UserChatRelation(user=user, chat=chat, nickname="").save()
+    UserChatRelation(user=sender, chat=chat, nickname="").save()
+
+    # Create a "friend added" message
+    ChatMessage(chat=chat, sender=User.magic_user_system(),
+                message=f"{user.auth_user.username} added {sender.auth_user.username} as a friend").save()
+
+    return friend
+
+
 @api(allowed_methods=["POST"])
 @check_fields({
     "id": int
 })
-def send_invitation(data, auth_user: AuthUser):
+def send_invitation(data: dict, auth_user: AuthUser):
     """
     POST /friend/invite
 
@@ -124,11 +161,7 @@ def send_invitation(data, auth_user: AuthUser):
 
     # If the user receives an invitation from the sender, accept it
     if FriendInvitation.objects.filter(sender=friend, receiver=user).exists():
-        # Create the friendship
-        f = Friend(user=user, friend=friend, nickname="", group=user.default_group)
-        f.save()
-        Friend(user=friend, friend=user, nickname="", group=friend.default_group).save()
-        FriendInvitation.objects.filter(sender=friend, receiver=user).delete()
+        f = create_friendship(user, FriendInvitation.objects.get(sender=friend, receiver=user))
         return f.to_struct()
 
     # Check invitation source
@@ -218,11 +251,7 @@ def respond_to_invitation(method: str, auth_user: AuthUser, invitation_id: int):
         return 403, "Forbidden"
 
     if method == "POST":
-        # Create the friendship
-        friend = Friend(user=user, friend=invitation.sender, nickname="", group=user.default_group)
-        friend.save()
-        Friend(user=invitation.sender, friend=user, nickname="", group=invitation.sender.default_group).save()
-        invitation.delete()
+        friend = create_friendship(user, invitation)
         return friend.to_struct()
 
     elif method == "DELETE":
@@ -230,7 +259,7 @@ def respond_to_invitation(method: str, auth_user: AuthUser, invitation_id: int):
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
-def query(data, method: str, auth_user: AuthUser, friend_user_id: int):
+def query(data: dict, method: str, auth_user: AuthUser, friend_user_id: int):
     """
     GET, PATCH, DELETE /friend/<int:friend_user_id>
 
@@ -344,7 +373,12 @@ def delete_friend(auth_user: AuthUser, friend_id):
     except Friend.DoesNotExist:
         return 400, "Friend not found"
 
+    # Delete related private chat; Private chat SHOULD always exist and be unique
+    Chat.objects.filter(owner=friend.user, members=friend.friend, name="") \
+        .union(Chat.objects.filter(owner=friend.friend, members=friend.user, name="")).first().delete()
+
     Friend.objects.get(user=friend.friend, friend=friend.user).delete()
+
     friend.delete()
 
 
