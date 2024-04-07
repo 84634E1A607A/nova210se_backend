@@ -7,16 +7,12 @@ from django.http import HttpRequest
 
 from main.views.api_utils import api, check_fields
 from main.views.generate_avatar import generate_random_avatar
-from main.exceptions import FieldTypeError, FieldMissingError
+from main.exceptions import FieldTypeError, FieldMissingError, ClientSideError
 from main.models import User, FriendGroup, Friend, AuthUser
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
-@check_fields({
-    "user_name": str,
-    "password": str
-})
-def login(data, request: HttpRequest):
+def login(data: dict, request: HttpRequest):
     """
     POST /user/login
 
@@ -48,12 +44,18 @@ def login(data, request: HttpRequest):
     If user_name or password field is empty or is not string, or if the JSON is bad, API returns 400 status code.
     """
 
-    user_name: str = data["user_name"]
-    password: str = data["password"]
+    # Validate user name
+    try:
+        User.validate_username(data.get("user_name"))
+    except ClientSideError as e:
+        # We expect there is a user with the same name so login is possible.
+        if e.code != 409:
+            raise
 
-    # Check username non-empty
-    if user_name == "":
-        return 400, "User name cannot be empty"
+    user_name: str = data["user_name"]
+
+    User.validate_password(data.get("password"))
+    password: str = data["password"]
 
     # Authenticate user
     if not AuthUser.objects.filter(username=user_name).exists():
@@ -73,7 +75,7 @@ def login(data, request: HttpRequest):
 @check_fields({
     "password": str
 })
-def register(data, request: HttpRequest):
+def register(data: dict, request: HttpRequest):
     """
     POST /user/register
 
@@ -143,7 +145,7 @@ def logout(request):
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
-def query(data, request):
+def query(data: dict, request):
     """
     GET, PATCH, DELETE /user
 
@@ -173,12 +175,12 @@ def get_user_info(request: HttpRequest):
     Get the user information for the current user. Returns the same struct as the login API.
     """
 
-    user = User.objects.get(auth_user=request.user)
+    user: User = User.objects.get(auth_user=request.user)
 
     return user.to_detailed_struct()
 
 
-def edit_user_info(data, request: HttpRequest):
+def edit_user_info(data: dict, request: HttpRequest):
     """
     PATCH /user
 
@@ -218,7 +220,7 @@ def edit_user_info(data, request: HttpRequest):
     This API returns the user information (like login page) after the update.
     """
 
-    user = User.objects.get(auth_user=request.user)
+    user: User = User.objects.get(auth_user=request.user)
 
     # Check password first
     if "new_password" in data or "phone" in data or "email" in data:
@@ -273,7 +275,7 @@ def delete_user(auth_user: AuthUser):
     This API returns 200 status code with an empty data field if the deletion is successful.
     """
 
-    user = User.objects.get(auth_user=auth_user)
+    user: User = User.objects.get(auth_user=auth_user)
 
     # Delete friend groups
     FriendGroup.objects.filter(user=user).delete()
