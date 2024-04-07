@@ -1,8 +1,6 @@
-import main.views.friend as friend
-import main.views.user as user
-import main.views.friend_group as friend_group
-import main.views.api_utils as api_utils
 from django.urls import path, re_path
+
+from main.views import user, friend, friend_group, api_utils
 
 urlpatterns = [
     # User control

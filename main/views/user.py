@@ -2,8 +2,6 @@
 User Control
 """
 
-import re
-
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import HttpRequest
 
