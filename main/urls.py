@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 
-from main.views import user, friend, friend_group, api_utils
+from main.views import user, friend, friend_group, api_utils, chat
 
 urlpatterns = [
     # User control
@@ -22,6 +22,14 @@ urlpatterns = [
     path('friend/invitation/<int:invitation_id>', friend.respond_to_invitation, name='friend_respond_to_invitation'),
     path('friend', friend.list_friend, name='friend_list_friend'),
     path('friend/<int:friend_user_id>', friend.query, name='friend_query'),
+
+    # Chat control
+    path('chat/new', chat.new_chat, name='chat_new'),
+    path('chat/<int:chat_id>/invite', chat.invite_to_chat, name='chat_invite'),
+    path('chat/<int:chat_id>', chat.query_chat, name='chat_delete'),
+    path('chat/<int:chat_id>/<int:member_id>/admin', chat.set_admin, name='chat_set_admin'),
+    path('chat/<int:chat_id>/set_owner', chat.set_owner, name='chat_set_owner'),
+    path('chat/<int:chat_id>/<int:member_id>', chat.remove_member, name='chat_remove_member'),
 
     # Catch all and return 404
     re_path('.*?', api_utils.not_found, name='not_found'),
