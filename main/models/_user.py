@@ -5,7 +5,6 @@ from django.contrib.auth.models import User as AuthUser
 
 from main.exceptions import FieldMissingError, FieldTypeError, ClientSideError
 
-
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@([A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
 DATA_URL_REGEX = re.compile(r"^data:image/[a-zA-Z]+;base64,[a-zA-Z0-9+/=]+$")
 
@@ -150,33 +149,21 @@ class User(models.Model):
 
     system = models.BooleanField(default=False)
 
-    __deleted = None
-
     @staticmethod
     def magic_user_deleted():
-        if User.__deleted is None:
-            try:
-                User.__deleted = User.objects.get(auth_user__username="#DELETED")
-            except User.DoesNotExist:
-                auth_user = AuthUser.objects.create_user(username="#DELETED", password="whatever")
-                User.__deleted = User(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
-                User.__deleted.save()
-
-        return User.__deleted
-
-    __system = None
+        try:
+            return User.objects.get(auth_user__username="#DELETED")
+        except User.DoesNotExist:
+            auth_user = AuthUser.objects.create_user(username="#DELETED", password="whatever")
+            return User.objects.create(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
 
     @staticmethod
     def magic_user_system():
-        if User.__system is None:
-            try:
-                User.__system = User.objects.get(auth_user__username="#SYSTEM")
-            except User.DoesNotExist:
-                auth_user = AuthUser.objects.create_user(username="#SYSTEM", password="whatever")
-                User.__system = User(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
-                User.__system.save()
-
-        return User.__system
+        try:
+            return User.objects.get(auth_user__username="#SYSTEM")
+        except User.DoesNotExist:
+            auth_user = AuthUser.objects.create_user(username="#SYSTEM", password="whatever")
+            return User.objects.create(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
 
     def to_detailed_struct(self):
         """
