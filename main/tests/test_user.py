@@ -541,3 +541,22 @@ class UserControlTests(TestCase):
         self.assertTrue(response.json()["ok"])
         self.assertEqual(response.status_code, 200)
         self.assertEqual(get_user_by_name("test_user").phone, "11111111111")
+
+    def test_system_users_cannot_be_found(self):
+        """
+        Test that system users cannot be found
+        """
+
+        # Create user #SYSTEM
+        User.magic_user_system()
+
+        create_user(self.client)
+
+        # Search for user #SYSTEM
+        response = self.client.post(reverse("friend_find"), {
+            "name_contains": "#"
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(len(response.json()["data"]), 0)

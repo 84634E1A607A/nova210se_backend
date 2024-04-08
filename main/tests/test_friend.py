@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from main.models import User, AuthUser, FriendInvitation, Friend, FriendGroup
-from main.tests.utils import create_user, login_user, logout_user, JsonClient, get_user_by_name
+from main.tests.utils import create_user, login_user, logout_user, JsonClient, get_user_by_name, create_friendship
 
 
 class FriendControlTests(TestCase):
@@ -31,17 +31,6 @@ class FriendControlTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(logout_user(self.client))
-
-    def create_friendship(self, u1_name: str, u2_name: str):
-        """
-        Create a friendship between u1 and u2. After this function, user will be logged out.
-
-        :param u1_name: first user's name, this user must exist
-        :param u2_name: second user's name, this user must also exist
-        """
-
-        self.send_invitation_via_search(u1_name, u2_name)
-        self.send_invitation_via_search(u2_name, u1_name)
 
     def test_find_friend_by_id(self):
         """
@@ -529,7 +518,7 @@ class FriendControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
         u2 = get_user_by_name("u2")
-        self.create_friendship("u1", "u2")
+        self.assertTrue(create_friendship(self.client, "u1", "u2"))
 
         # login u1 and get u2's info
         self.assertTrue(login_user(self.client, "u1"))
@@ -570,7 +559,7 @@ class FriendControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u2"))
         u1 = get_user_by_name("u1")
         u2 = get_user_by_name("u2")
-        self.create_friendship("u1", "u2")
+        self.assertTrue(create_friendship(self.client, "u1", "u2"))
 
         # Check friend info before update
         self.assertEqual(Friend.objects.get(friend=u2, user=u1).nickname, "")
@@ -614,7 +603,7 @@ class FriendControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
         u2 = get_user_by_name("u2")
-        self.create_friendship("u1", "u2")
+        self.assertTrue(create_friendship(self.client, "u1", "u2"))
 
         # login u1, tries to update u2's info with non-existing group id
         self.assertTrue(login_user(self.client, "u1"))
@@ -642,7 +631,7 @@ class FriendControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
         u2 = get_user_by_name("u2")
-        self.create_friendship("u1", "u2")
+        self.assertTrue(create_friendship(self.client, "u1", "u2"))
 
         # login u1, tries to update u2's info with non-existing group id
         self.assertTrue(login_user(self.client, "u1"))
@@ -672,7 +661,7 @@ class FriendControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u1"))
         self.assertTrue(create_user(self.client, "u2"))
         u2 = get_user_by_name("u2")
-        self.create_friendship("u1", "u2")
+        self.assertTrue(create_friendship(self.client, "u1", "u2"))
 
         # login u1, tries to update u2's with group id that belongs to u2
         self.assertTrue(login_user(self.client, "u1"))
@@ -694,7 +683,7 @@ class FriendControlTests(TestCase):
         self.assertTrue(create_user(self.client, "u2"))
         u1 = get_user_by_name("u1")
         u2 = get_user_by_name("u2")
-        self.create_friendship("u1", "u2")
+        self.assertTrue(create_friendship(self.client, "u1", "u2"))
 
         # login to u1, delete the friendship with u2
         self.assertTrue(login_user(self.client, "u1"))
@@ -742,7 +731,7 @@ class FriendControlTests(TestCase):
         self.assertEqual(response.json()["data"], [])
 
         # Create friendship and list again
-        self.create_friendship("ur", "u1")
+        self.assertTrue(create_friendship(self.client, "ur", "u1"))
 
         self.assertTrue(login_user(self.client, "ur"))
         f1 = Friend.objects.get(friend=u1)
@@ -751,7 +740,7 @@ class FriendControlTests(TestCase):
         self.assertEqual(response.json()["data"], [f1.to_struct()])
 
         # Create friendship again and list
-        self.create_friendship("ur", "u2")
+        self.assertTrue(create_friendship(self.client, "ur", "u2"))
 
         self.assertTrue(login_user(self.client, "ur"))
         f2 = Friend.objects.get(friend=u2)

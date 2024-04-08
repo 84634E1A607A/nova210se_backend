@@ -75,3 +75,33 @@ def login_user(client: JsonClient, user_name: str = "test_user", password: str =
 
     data = response.json()
     return response.status_code == 200 and data["ok"]
+
+
+def create_friendship(client: JsonClient, u1: str, u2: str) -> bool:
+    """
+    Create a friendship between two users.
+
+    Each user MUST exist.
+
+    After creating the friendship, both users will be logged out.
+    """
+
+    def send_invitation(sender: str, receiver: str):
+        if not login_user(client, sender):
+            return False
+
+        response = client.post(reverse("friend_invite"), {
+            "id": get_user_by_name(receiver).id,
+            "source": "search",
+            "comment": ""
+        })
+
+        if response.status_code != 200:
+            return False
+
+        return logout_user(client)
+
+    if not send_invitation(u1, u2):
+        return False
+
+    return send_invitation(u2, u1)
