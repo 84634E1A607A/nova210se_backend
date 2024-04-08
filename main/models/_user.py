@@ -18,7 +18,7 @@ class User(models.Model):
     auth_user = models.OneToOneField(AuthUser, on_delete=models.CASCADE)
 
     @staticmethod
-    def validate_username(username: any):
+    def validate_username(username: any, allow_conflict: bool = False):
         """
         Validates the username of the user.
         """
@@ -38,7 +38,7 @@ class User(models.Model):
         if not re.match(r"^[a-zA-Z0-9\-_()@.]+$", username):
             raise ClientSideError("Only a-z A-Z 0-9 - _ ( ) @ . are allowed.")
 
-        if AuthUser.objects.filter(username=username).exists():
+        if not allow_conflict and AuthUser.objects.filter(username=username).exists():
             raise ClientSideError("Username already exists", code=409)
 
     @staticmethod

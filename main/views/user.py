@@ -45,12 +45,7 @@ def login(data: dict, request: HttpRequest):
     """
 
     # Validate user name
-    try:
-        User.validate_username(data.get("user_name"))
-    except ClientSideError as e:
-        # We expect there is a user with the same name so login is possible.
-        if e.code != 409:
-            raise
+    User.validate_username(data.get("user_name"), True)
 
     user_name: str = data["user_name"]
 
