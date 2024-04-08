@@ -150,6 +150,24 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
                 message=f"{auth_user.username} added {member.auth_user.username} to the group").save()
 
 
+@api()
+def list_chats(auth_user: AuthUser):
+    """
+    GET /chat
+
+    List all chats of the current user.
+
+    This API requires authentication.
+
+    The API will return a list of chats that the current user is in.
+    Each chat will be returned in the format of UserChatRelation.to_struct.
+    """
+
+    user = User.objects.get(auth_user=auth_user)
+
+    return [relation.to_struct() for relation in UserChatRelation.objects.filter(user=user)]
+
+
 @api(allowed_methods=["GET", "DELETE"])
 def query_chat(chat_id: int, auth_user: AuthUser, method: str):
     """
