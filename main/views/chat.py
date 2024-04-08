@@ -135,6 +135,9 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
 
     prohibit_private_chat(chat)
 
+    if user not in chat.members.all():
+        return 403, "You don't have permission to invite to this chat"
+
     if member in chat.members.all():
         return 400, "User is already in the chat"
 
