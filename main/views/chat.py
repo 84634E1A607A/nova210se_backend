@@ -1,7 +1,7 @@
 from django.db.models import QuerySet
 
 from .api_utils import api, check_fields
-from main.models import Chat, ChatMessage, User, AuthUser, Friend, UserChatRelation
+from main.models import Chat, ChatMessage, User, AuthUser, Friend, UserChatRelation, ChatInvitation
 from main.exceptions import ClientSideError
 
 
@@ -99,18 +99,19 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
 
     This API requires authentication.
 
-    This API accepts a POST request with JSON content: { "user_id": 1 }
+    This API accepts a POST request with JSON content: { "user_id": 1 }; If the operation is successful, the API will
+    return 200 status code with an empty data field.
 
-    Only group chat can invite users. If the chat is a private chat, the API will return 400.
+    You can invite users only in a group chat. If the chat is a private chat, the API will return 400.
 
     The user with the given id will be invited to the chat with the given chat_id WITHOUT THE NEED TO CONFIRM.
 
     The user MUST be an existing user and a friend to the current user, or the API will return 400.
 
-    Magic user #SYSTEM will send a message to the chat when the user is added.
+    A notification will be sent to group owner and admins for them to approve / decline the invitation.
     """
 
-    user = User.objects.get(auth_user=auth_user)
+    user: User = User.objects.get(auth_user=auth_user)
 
     member_id: int = data["user_id"]
 
@@ -124,14 +125,14 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
     if not m.exists():
         return 400, "Either the user does not exist or is not a friend of the current user"
 
-    member = m.first().friend
+    member: User = m.first().friend
 
-    chat = Chat.objects.filter(id=chat_id)
+    chat: QuerySet = Chat.objects.filter(id=chat_id)
 
     if not chat.exists():
         return 400, "Chat not found"
 
-    chat = chat.first()
+    chat: Chat = chat.first()
 
     prohibit_private_chat(chat)
 
@@ -141,13 +142,101 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
     if member in chat.members.all():
         return 400, "User is already in the chat"
 
+    # Create a chat invitation
+    ChatInvitation.objects.create(chat=chat, user=member, invited_by=user)
+
+    # TODO: Notify the group owner and admins
+
+@api()
+def list_invitation(auth_user: AuthUser, chat_id: int):
+    """
+    GET /chat/<chat_id>/invitation
+
+    List all pending invitations.
+
+    This API requires authentication.
+
+    Current user must be the chat owner or an admin to view the invitations.
+
+    The API will return a list of invitations in the chat, each in the format of ChatInvitation.to_struct.
+
+    If the chat does not exist, the API will return 400.
+
+    If the user is neither the owner nor an admin of the chat, the API will return 403.
+    """
+
+    user: User = User.objects.get(auth_user=auth_user)
+    chat: QuerySet = Chat.objects.filter(id=chat_id)
+
+    if not chat.exists():
+        return 400, "Chat not found"
+
+    chat: Chat = chat.first()
+
+    if user is not chat.owner and user not in chat.admins.all():
+        return 403, "You don't have permission to view the invitations"
+
+    return [invitation.to_struct() for invitation in ChatInvitation.objects.filter(chat=chat)]
+
+
+@api(allowed_methods=["POST", "DELETE"])
+def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, method: str):
+    """
+    GET / DELETE /chat/<chat_id>/invitation/<user_id>
+
+    Approve / Decline a chat invitation.
+
+    This API requires authentication.
+
+    You can only approve / decline an invitation in a group chat and as the group owner or an admin.
+
+    A successful response will return 200 status code with an empty data field.
+
+    If the chat does not exist, the API will return 400.
+
+    If the user is neither the owner nor an admin of the chat, the API will return 403.
+
+    If the invitation does not exist, the API will return 400.
+
+    For GET request:
+
+    User will be added to the chat, and *then* magic user #SYSTEM will send a message there.
+
+    For DELETE request:
+
+    The invitation will be deleted.
+    """
+
+    user: User = User.objects.get(auth_user=auth_user)
+    chat: QuerySet = Chat.objects.filter(id=chat_id)
+
+    if not chat.exists():
+        return 400, "Chat not found"
+
+    chat: Chat = chat.first()
+
+    if user is not chat.owner and user not in chat.admins.all():
+        return 403, "You don't have permission to approve or decline the invitation"
+
+    invitation: QuerySet = ChatInvitation.objects.filter(chat=chat, user__id=user_id)
+
+    if not invitation.exists():
+        return 400, "Invitation not found"
+
+    invitation: ChatInvitation = invitation.first()
+
+    if method == "DELETE":
+        invitation.delete()
+        return
+
+    # Accept the invitation
+    member: User = invitation.user
     chat.members.add(member)
+    UserChatRelation.objects.create(user=member, chat=chat, nickname="")
 
-    UserChatRelation(user=member, chat=chat, nickname="").save()
-
-    # Create a "user added" message
-    ChatMessage(chat=chat, sender=User.magic_user_system(),
-                message=f"{auth_user.username} added {member.auth_user.username} to the group").save()
+    # Send a system message
+    ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(), message=f"{auth_user.username} approved \
+    {member.auth_user.username} to join the group, invited by {invitation.invited_by.auth_user.username}")
 
 
 @api()

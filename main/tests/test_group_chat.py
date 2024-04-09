@@ -2,7 +2,7 @@
 Unit-tests for group chat APIs
 """
 
-from main.models import User, Chat, ChatMessage
+from main.models import User, Chat, ChatMessage, ChatInvitation
 from django.test import TestCase
 from django.urls import reverse
 
@@ -157,11 +157,12 @@ class GroupChatTests(TestCase):
         })
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(Chat.objects.get(id=cid).members.count(), 3)
-        self.assertTrue(self.users[2] in Chat.objects.get(id=cid).members.all())
-
-        # System message is sent
-        self.assertEqual(ChatMessage.objects.filter(chat_id=cid).count(), 2)
+        self.assertEqual(ChatInvitation.objects.count(), 1)
+        # self.assertEqual(Chat.objects.get(id=cid).members.count(), 3)
+        # self.assertTrue(self.users[2] in Chat.objects.get(id=cid).members.all())
+        #
+        # # System message is sent
+        # self.assertEqual(ChatMessage.objects.filter(chat_id=cid).count(), 2)
 
     def test_invite_to_chat_wrong_user(self):
         """

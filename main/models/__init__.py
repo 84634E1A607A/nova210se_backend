@@ -5,3 +5,4 @@ from ._friend_invitation import FriendInvitation
 from ._chat import Chat
 from ._chat_message import ChatMessage
 from ._user_chat_relation import UserChatRelation
+from ._chat_invitation import ChatInvitation
