@@ -165,21 +165,6 @@ class User(models.Model):
             auth_user = AuthUser.objects.create_user(username="#SYSTEM", password="whatever")
             return User.objects.create(auth_user=auth_user, avatar_url="", email="", phone="", system=True)
 
-    def to_detailed_struct(self):
-        """
-        Convert a User model to detailed user information JSON object.
-
-        All fields except password hash are returned, should be used when getting user's own info or friend's info.
-        """
-
-        return {
-            "id": self.id,
-            "user_name": self.auth_user.username,
-            "avatar_url": self.avatar_url,
-            "email": self.email,
-            "phone": self.phone
-        }
-
     def to_basic_struct(self):
         """
         Convert a User model to basic user information JSON object.
@@ -190,4 +175,17 @@ class User(models.Model):
             "id": self.id,
             "user_name": self.auth_user.username,
             "avatar_url": self.avatar_url
+        }
+
+    def to_detailed_struct(self):
+        """
+        Convert a User model to detailed user information JSON object.
+
+        All fields except password hash are returned, should be used when getting user's own info or friend's info.
+        """
+
+        return {
+            **self.to_basic_struct(),
+            "email": self.email,
+            "phone": self.phone
         }

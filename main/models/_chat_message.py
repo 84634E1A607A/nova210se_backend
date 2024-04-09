@@ -30,17 +30,13 @@ class ChatMessage(models.Model):
             "message_id": self.id,
             "chat_id": self.chat.id,
             "message": self.message,
-            "send_time": self.send_time,
+            "send_time": self.send_time.timestamp(),
             "sender": self.sender.to_basic_struct()
         }
 
     def to_detailed_struct(self):
         return {
-            "message_id": self.id,
-            "chat_id": self.chat.id,
-            "message": self.message,
-            "send_time": self.send_time,
-            "sender": self.sender.to_basic_struct(),
+            **self.to_basic_struct(),
             "read_users": [user.to_basic_struct() for user in self.read_users.all()],
 
             # Only basic struct is returned for reply_to to prevent infinite recursion
