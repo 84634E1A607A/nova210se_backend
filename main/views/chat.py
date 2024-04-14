@@ -147,6 +147,7 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
 
     # TODO: Notify the group owner and admins
 
+
 @api()
 def list_invitation(auth_user: AuthUser, chat_id: int):
     """

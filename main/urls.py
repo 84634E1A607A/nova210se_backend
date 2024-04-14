@@ -26,6 +26,7 @@ urlpatterns = [
     # Chat control
     path('chat/new', chat.new_chat, name='chat_new'),
     path('chat/<int:chat_id>/invite', chat.invite_to_chat, name='chat_invite'),
+    path('chat/<int:chat_id>/invitation', chat.list_invitation, name='chat_list_invitation'),
     path('chat/<int:chat_id>/invitation/<int:user_id>', chat.respond_to_invitation, name='chat_respond_to_invitation'),
     path('chat/<int:chat_id>', chat.query_chat, name='chat_get_delete'),
     path('chat', chat.list_chats, name='chat_list'),
