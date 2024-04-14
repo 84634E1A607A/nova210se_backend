@@ -312,6 +312,7 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
         chat.admins.remove(user)
 
     chat.members.remove(user)
+    UserChatRelation.objects.filter(user=user, chat=chat).delete()
 
     # Post a system message
     ChatMessage(chat=chat, sender=User.magic_user_system(),
