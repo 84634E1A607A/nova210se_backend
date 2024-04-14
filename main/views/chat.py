@@ -104,11 +104,10 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
 
     You can invite users only in a group chat. If the chat is a private chat, the API will return 400.
 
-    The user with the given id will be invited to the chat with the given chat_id WITHOUT THE NEED TO CONFIRM.
+    A notification will be sent to group owner and admins for them to approve / decline the invitation, but the user
+    invited WILL NOT RECEIVE A NOTIFICATION.
 
     The user MUST be an existing user and a friend to the current user, or the API will return 400.
-
-    A notification will be sent to group owner and admins for them to approve / decline the invitation.
     """
 
     user: User = User.objects.get(auth_user=auth_user)
