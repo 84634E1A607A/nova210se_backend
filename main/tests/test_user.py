@@ -367,6 +367,60 @@ class UserControlTests(TestCase):
         })
         self.assertEqual(response.status_code, 400)
 
+    def test_modify_user_name(self):
+        """
+        Modify a user's username
+        """
+
+        # Create user
+        self.assertTrue(create_user(self.client))
+
+        # Modify user
+        response = self.client.patch(reverse("user"), {
+            "user_name": "modified_username"
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["user_name"], "modified_username")
+
+    def test_modify_user_name_wrong_format(self):
+        """
+        Modify a user's username with wrong format
+        """
+
+        # Create users
+        self.assertTrue(create_user(self.client))
+        self.assertTrue(create_user(self.client, user_name="USER2"))
+
+        # Try to modify user name with space
+        response = self.client.patch(reverse("user"), {
+            "user_name": "modified username"
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # Try to modify user name with special char or system name
+        response = self.client.patch(reverse("user"), {
+            "user_name": "+-*#"
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # Try to modify user name with too long
+        response = self.client.patch(reverse("user"), {
+            "user_name": "NAME"*32
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # Try to modify user name with existing user name
+        response = self.client.patch(reverse("user"), {
+            "user_name": "USER2"
+        })
+        self.assertEqual(response.status_code, 409)
+
+        # Try to modify user name with empty name
+        response = self.client.patch(reverse("user"), {
+            "user_name": ""
+        })
+        self.assertEqual(response.status_code, 400)
+
     def test_get_user_by_id(self):
         """
         Get a user by ID

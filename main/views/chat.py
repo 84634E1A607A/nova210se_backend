@@ -173,7 +173,7 @@ def list_invitation(auth_user: AuthUser, chat_id: int):
 
     chat: Chat = chat.first()
 
-    if user is not chat.owner and user not in chat.admins.all():
+    if user != chat.owner and user not in chat.admins.all():
         return 403, "You don't have permission to view the invitations"
 
     return [invitation.to_struct() for invitation in ChatInvitation.objects.filter(chat=chat)]
@@ -215,7 +215,7 @@ def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, metho
 
     chat: Chat = chat.first()
 
-    if user is not chat.owner and user not in chat.admins.all():
+    if user != chat.owner and user not in chat.admins.all():
         return 403, "You don't have permission to approve or decline the invitation"
 
     invitation: QuerySet = ChatInvitation.objects.filter(chat=chat, user__id=user_id)
@@ -235,8 +235,11 @@ def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, metho
     UserChatRelation.objects.create(user=member, chat=chat, nickname="")
 
     # Send a system message
-    ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(), message=f"{auth_user.username} approved \
-    {member.auth_user.username} to join the group, invited by {invitation.invited_by.auth_user.username}")
+    ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
+                               message=f"{auth_user.username} approved " +
+                               f"{member.auth_user.username} to join the group, " +
+                               f"invited by {invitation.invited_by.auth_user.username}")
+    invitation.delete()
 
 
 @api()
@@ -354,7 +357,7 @@ def set_admin(data: bool, chat_id: int, member_id: int, auth_user: AuthUser):
     """
     POST /chat/<chat_id>/<member_id>/admin
 
-    Set a user as an / not an admin of a chat.
+    Base on data, set a user as an / not an admin of a chat.
 
     This API requires authentication.
 
