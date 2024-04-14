@@ -292,15 +292,15 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
 
     chat = chat.first()
 
+    if user not in chat.members.all():
+        return 403, "You are not in the chat"
+
     if method == "GET":
         return chat.to_struct()
 
     # DELETE from here on
 
     prohibit_private_chat(chat)
-
-    if user not in chat.members.all():
-        return 403, "You are not in the chat"
 
     # Will delete the whole chat
     if user == chat.owner:
