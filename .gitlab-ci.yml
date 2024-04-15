@@ -17,7 +17,7 @@ unit-test:
   extends: .test
 
   script:
-    - python manage.py test
+    - python manage.py test --parallel
 
   except:
     - master

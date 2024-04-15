@@ -3,5 +3,5 @@
 set -e
 
 pycodestyle --config pycodestyle.cfg .
-python manage.py test
+python manage.py test --parallel
 
