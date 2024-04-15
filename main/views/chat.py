@@ -512,15 +512,9 @@ def remove_member(chat_id: int, member_id: int, auth_user: AuthUser):
             return 403, "You don't have the permission to remove an admin"
 
         chat.admins.remove(member)
-        chat.members.remove(member)
-
-        # Add a system message
-        ChatMessage(chat=chat, sender=User.magic_user_system(),
-                    message=f"{auth_user.username} removed {member.auth_user.username} from the group").save()
-
-        return
 
     chat.members.remove(member)
+    UserChatRelation.objects.filter(user=member, chat=chat).delete()
 
     # Add a system message
     ChatMessage(chat=chat, sender=User.magic_user_system(),
