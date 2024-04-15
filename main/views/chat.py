@@ -349,7 +349,7 @@ def get_messages(chat_id: int, auth_user: AuthUser):
     if user not in chat.members.all():
         return 403, "You don't have sufficient permission to view the messages"
 
-    return [message.to_struct() for message in ChatMessage.objects.filter(chat=chat).order_by("-send_time")]
+    return [message.to_detailed_struct() for message in ChatMessage.objects.filter(chat=chat).order_by("-send_time")]
 
 
 @api(allowed_methods=["POST"])
