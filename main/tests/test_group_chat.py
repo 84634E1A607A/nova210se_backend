@@ -723,3 +723,338 @@ class GroupChatTests(TestCase):
         # Try to get a group message which the group does not exist
         response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": 123}))
         self.assertEqual(response.status_code, 404)
+
+    def test_set_unset_admin(self):
+        """
+        Set and unset a group member to admin
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1(owner) and set u2 and u3 as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.first(), self.users[1])
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[2].id
+        }), data="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 2)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.last(), self.users[2])
+
+        # Unset u2 to non-admin
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="false")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.first(), self.users[2])
+
+    def test_set_admin_fail(self):
+        """
+        Try to set an admin in the following cases:
+        wrong json format,
+        group does not exist,
+        chat is private,
+        a non-owner user set member to admin,
+        set the owner to admin,
+        user is not in group
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # json format is incorrect
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[2].id
+        }), data="123")
+        self.assertEqual(response.status_code, 400)
+
+        # group does not exist
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": 123,
+            "member_id": self.users[2].id
+        }), data="true")
+        self.assertEqual(response.status_code, 400)
+
+        # set an admin in private group
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": 1,
+            "member_id": self.users[2].id
+        }), data="true")
+        self.assertEqual(response.status_code, 400)
+
+        # Login to u2(non-owner) and set u3 as admin
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[2].id
+        }), data="true")
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 0)
+
+        # Login to u1(owner) and set himself as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[0].id
+        }), data="true")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 0)
+
+        # user is not in group
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[3].id
+        }), data="true")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 0)
+
+    def test_set_admin_to_admin(self):
+        """
+        Try to set an admin/non-admin to admin/non-admin
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1(owner) and set u2 as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+
+        # Try to set u2(admin) as admin
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+
+        # Try to unset u3(non-admin) to num-admin
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[2].id
+        }), data="false")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+
+    def test_set_owner(self):
+        """
+        Set a member to be owner in chat group
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1(owner) and set u2 as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.first(), self.users[1])
+
+        # Set u2 as owner
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": cid}), data={
+            "chat_owner": self.users[1].id
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().owner, self.users[1])
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 1)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.first(), self.users[0])
+
+        # Login to u2(new owner) and set u3 as owner
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": cid}), data={
+            "chat_owner": self.users[2].id
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().owner, self.users[2])
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 2)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.first(), self.users[0])
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.last(), self.users[1])
+
+    def test_set_owner_fail(self):
+        """
+        Try to set an owner in the following cases:
+        a non-owner user set member to owner,
+        group does not exist,
+        chat is private,
+        set the owner to owner,
+        user is not in group
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u2(non-owner) and set u3 as admin
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": cid}), data={
+            "chat_owner": self.users[2].id
+        })
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Chat.objects.filter(id=cid).first().owner, self.users[0])
+
+        # group does not exist
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": 123}), data={
+            "chat_owner": self.users[1].id
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # set an owner in private group
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": 1}), data={
+            "chat_owner": self.users[1].id
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # Login to u1(owner) and set himself as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": cid}), data={
+            "chat_owner": self.users[0].id
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Chat.objects.filter(id=cid).first().owner, self.users[0])
+
+        # user is not in group
+        response = self.client.post(reverse("chat_set_owner", kwargs={"chat_id": cid}), data={
+            "chat_owner": self.users[3].id
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Chat.objects.filter(id=cid).first().owner, self.users[0])
+
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 0)
+
+    def test_remove_member(self):
+        """
+        Remove a member from a chat
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1(owner) and set u2 as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+
+        # Login to u2(admin) and remove u3
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[2].id
+        }))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().members.count(), 2)
+        self.assertFalse(UserChatRelation.objects.filter(user=self.users[2], chat__id=cid).exists())
+        self.assertEqual(ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).last().message,
+                         f"u2 removed u3 from the group")
+
+        # Login to u1(owner) and remove u2(admin)
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().members.count(), 1)
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 0)
+        self.assertFalse(UserChatRelation.objects.filter(user=self.users[1], chat__id=cid).exists())
+        self.assertEqual(ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).last().message,
+                         f"u1 removed u2 from the group")
+
+    def test_remove_member_fail(self):
+        """
+        Try to remove a member in the following cases:
+        group does not exist,
+        chat is private,
+        user is not in group,
+        a non-owner/admin user remove a member,
+        an admin remove the owner,
+        an admin remove an admin,
+        an owner remove itself
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1(owner) and set u2 as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+        self.assertEqual(response.status_code, 200)
+
+        # group does not exist
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": 123,
+            "member_id": self.users[2].id
+        }))
+        self.assertEqual(response.status_code, 400)
+
+        # chat is private
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": 1,
+            "member_id": self.users[2].id
+        }))
+        self.assertEqual(response.status_code, 400)
+
+        # user is not in group
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[3].id
+        }))
+        self.assertEqual(response.status_code, 400)
+
+        # a non-owner/admin user remove a member
+        self.assertTrue(login_user(self.client, "u3"))
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[0].id
+        }))
+        self.assertEqual(response.status_code, 403)
+
+        # an admin remove the owner
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[0].id
+        }))
+        self.assertEqual(response.status_code, 403)
+
+        # an admin remove an admin
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }))
+        self.assertEqual(response.status_code, 403)
+
+        # an owner remove itself
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("chat_remove_member", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[0].id
+        }))
+        self.assertEqual(response.status_code, 403)
+
+    def test_chat_status_if_user_deleted(self):
+        # TODO
+        pass
