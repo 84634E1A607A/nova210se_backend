@@ -502,3 +502,224 @@ class GroupChatTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(ChatInvitation.objects.count(), 1)
         self.assertEqual(Chat.objects.filter(id=cid).first().members.count(), 2)
+
+    def test_list_chats(self):
+        """
+        List all chats of the current user
+        """
+
+        # Create chat groups
+        self.assertTrue(login_user(self.client, "u1"))
+        cid1 = self.create_chat("chat1", [self.users[0], self.users[1]])
+        cid2 = self.create_chat("chat2", [self.users[0], self.users[1], self.users[2]])
+        cid3 = self.create_chat("chat3", [self.users[0]])
+
+        # List and check for u1
+        response = self.client.get(reverse("chat_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [
+            {'chat': Chat.objects.get(id=1).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=2).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=3).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid1).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid2).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid3).to_struct(), 'nickname': '', 'unread_count': 1},
+        ])
+
+        # List and check for u3
+        self.assertTrue(login_user(self.client, "u3"))
+        response = self.client.get(reverse("chat_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [
+            {'chat': Chat.objects.get(id=2).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=4).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid2).to_struct(), 'nickname': '', 'unread_count': 1},
+        ])
+
+    def test_get_chat_info(self):
+        """
+        Get a chat info by chat id
+        """
+
+        # Create chat groups
+        cid1 = self.create_chat("chat1", [self.users[0], self.users[1]])
+        cid2 = self.create_chat("chat2", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1 and get chat info
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": 1}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"],
+                         Chat.objects.filter(id=1).first().to_struct())
+        response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid1}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"],
+                         Chat.objects.filter(id=cid1).first().to_struct())
+        response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid2}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"],
+                         Chat.objects.filter(id=cid2).first().to_struct())
+
+        # Login to u3 and get chat info
+        self.assertTrue(login_user(self.client, "u3"))
+        response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid2}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"],
+                         Chat.objects.filter(id=cid2).first().to_struct())
+
+    def test_get_chat_info_others_group(self):
+        """
+        Get a chat info which the current user is not a member of the chat
+        """
+
+        # Create chat groups
+        cid1 = self.create_chat("chat1", [self.users[0], self.users[1]])
+
+        # Log in to u3 and try to get u1u2's chat group info
+        self.assertTrue(login_user(self.client, "u3"))
+        response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid1}))
+        self.assertEqual(response.status_code, 403)
+
+    def test_get_chat_info_non_existing_group(self):
+        """
+        Get a chat info which the chat does not exist
+        """
+
+        # Login to u1 and try to get a chat group info
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": 123}))
+        self.assertEqual(response.status_code, 400)
+
+    def test_leave_chat_group(self):
+        """
+        Leave a chat group
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1]])
+
+        # Login u2 and leave the chat
+        self.assertTrue(login_user(self.client, "u2"))
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[1]).count(), 3)
+
+        response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().members.count(), 1)
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[1]).count(), 2)
+        self.assertEqual(ChatMessage.objects.filter(chat__id=cid).last().message,
+                         f"u2 left the chat")
+
+    def test_leave_chat_group_with_problem(self):
+        """
+        Test leaving a chat group with the case:
+        group does not exist, user is not a member, group is private
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[1], self.users[2]])
+
+        # Group does not exist
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": 123}))
+        self.assertEqual(response.status_code, 400)
+
+        # User is not a member
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 403)
+
+        # Group is private
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": 1}))
+        self.assertEqual(response.status_code, 400)
+
+    def test_leave_chat_group_owner(self):
+        """
+        Test an owner leave the chat
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[0]).count(), 4)
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[1]).count(), 3)
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[2]).count(), 3)
+
+        # Login to u1 and leave the group
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Chat.objects.filter(id=cid).exists())
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[0]).count(), 3)
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[1]).count(), 2)
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[2]).count(), 2)
+
+    def test_leave_chat_group_admin(self):
+        """
+        Test an admin leave the chat
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1 and set u2 as admin
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_set_admin", kwargs={
+            "chat_id": cid,
+            "member_id": self.users[1].id
+        }), data="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Chat.objects.filter(id=cid).first().members.count(), 3)
+
+        # u2 leaves the chat and check
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Chat.objects.filter(id=cid).exists())
+        self.assertEqual(Chat.objects.filter(id=cid).first().admins.count(), 0)
+        self.assertEqual(Chat.objects.filter(id=cid).first().members.count(), 2)
+        self.assertEqual(UserChatRelation.objects.filter(user=self.users[1]).count(), 2)
+        self.assertEqual(ChatMessage.objects.filter(chat__id=cid).last().message,
+                         f"u2 left the chat")
+
+    def test_get_messages(self):
+        """
+        Get all messages in a chat with chat id
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Login to u1 and get all messages
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [
+            ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).first().to_detailed_struct()
+        ])
+
+        # Send a message in chat
+        ChatMessage.objects.create(chat_id=cid, sender=self.users[0], message="This is a message")
+        response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [
+            ChatMessage.objects.filter(chat__id=cid, sender=self.users[0]).first().to_detailed_struct(),
+            ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).first().to_detailed_struct()
+        ])
+
+    def test_get_messages_fail(self):
+        """
+        Try to get all message when the group does not exist or
+        user is not a group member
+        """
+
+        # Create chat group
+        cid = self.create_chat("chat1", [self.users[0], self.users[1]])
+
+        # Login to u3(not a member) and get messages
+        self.assertTrue(login_user(self.client, "u3"))
+        response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": cid}))
+        self.assertEqual(response.status_code, 403)
+
+        # Try to get a group message which the group does not exist
+        response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": 123}))
+        self.assertEqual(response.status_code, 404)

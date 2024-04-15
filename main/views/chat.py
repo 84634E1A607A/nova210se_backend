@@ -429,8 +429,10 @@ def set_owner(data: dict, chat_id: int, auth_user: AuthUser):
     The current user MUST be the owner of the chat, or the API will return 403.
 
     The user with the given user_id will be set as the new owner of the chat with the given chat_id.
-    If the user was an admin, the user will be removed from the admin list. After the operation, the current user
-    will be added to the admin list.
+
+    If the user was an admin, the user will be removed from the admin list.
+
+    After the operation, the current user will be added to the admin list.
 
     If the user is already the owner / the user is not in the group, the API will return 400.
     """
