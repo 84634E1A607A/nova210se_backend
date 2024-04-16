@@ -4,3 +4,4 @@ pycodestyle~=2.0
 daphne~=4.0
 django-cors-headers~=4.0
 pydenticon~=0.3
+tblib~=3.0

@@ -288,18 +288,17 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
 
     user = User.objects.get(auth_user=auth_user)
 
-    chat = Chat.objects.filter(id=chat_id)
+    relation = UserChatRelation.objects.filter(user=user, chat__id=chat_id)
 
-    if not chat.exists():
+    if not relation.exists():
         return 400, "Chat not found"
 
-    chat = chat.first()
+    relation = relation.first()
 
-    if user not in chat.members.all():
-        return 403, "You are not in the chat"
+    chat = relation.chat
 
     if method == "GET":
-        return chat.to_struct()
+        return relation.to_struct()
 
     # DELETE from here on
 

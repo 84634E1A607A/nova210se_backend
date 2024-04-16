@@ -550,22 +550,22 @@ class GroupChatTests(TestCase):
         response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": 1}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"],
-                         Chat.objects.filter(id=1).first().to_struct())
+                         UserChatRelation.objects.filter(user=self.users[0], chat__id=1).first().to_struct())
         response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid1}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"],
-                         Chat.objects.filter(id=cid1).first().to_struct())
+                         UserChatRelation.objects.filter(user=self.users[0], chat__id=cid1).first().to_struct())
         response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid2}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"],
-                         Chat.objects.filter(id=cid2).first().to_struct())
+                         UserChatRelation.objects.filter(user=self.users[0], chat__id=cid2).first().to_struct())
 
         # Login to u3 and get chat info
         self.assertTrue(login_user(self.client, "u3"))
         response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid2}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"],
-                         Chat.objects.filter(id=cid2).first().to_struct())
+                         UserChatRelation.objects.filter(user=self.users[2], chat__id=cid2).first().to_struct())
 
     def test_get_chat_info_others_group(self):
         """
@@ -578,7 +578,7 @@ class GroupChatTests(TestCase):
         # Log in to u3 and try to get u1u2's chat group info
         self.assertTrue(login_user(self.client, "u3"))
         response = self.client.get(reverse("chat_get_delete", kwargs={"chat_id": cid1}))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 400)
 
     def test_get_chat_info_non_existing_group(self):
         """
@@ -626,7 +626,7 @@ class GroupChatTests(TestCase):
         # User is not a member
         self.assertTrue(login_user(self.client, "u1"))
         response = self.client.delete(reverse("chat_get_delete", kwargs={"chat_id": cid}))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 400)
 
         # Group is private
         self.assertTrue(login_user(self.client, "u1"))
