@@ -519,5 +519,3 @@ def remove_member(chat_id: int, member_id: int, auth_user: AuthUser):
     # Add a system message
     ChatMessage(chat=chat, sender=User.magic_user_system(),
                 message=f"{auth_user.username} removed {member.auth_user.username} from the group").save()
-
-    return

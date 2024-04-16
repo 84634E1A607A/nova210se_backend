@@ -380,7 +380,7 @@ class GroupChatTests(TestCase):
                          self.users[1].to_detailed_struct())
 
         # Send invitation to u3
-        response = self.client.post(reverse("chat_invite", kwargs={"chat_id": cid}), {
+        self.client.post(reverse("chat_invite", kwargs={"chat_id": cid}), {
             "user_id": self.users[2].id
         })
 
@@ -830,7 +830,7 @@ class GroupChatTests(TestCase):
 
         # Login to u1(owner) and set u2 as admin
         self.assertTrue(login_user(self.client, "u1"))
-        response = self.client.post(reverse("chat_set_admin", kwargs={
+        self.client.post(reverse("chat_set_admin", kwargs={
             "chat_id": cid,
             "member_id": self.users[1].id
         }), data="true")
@@ -862,7 +862,7 @@ class GroupChatTests(TestCase):
 
         # Login to u1(owner) and set u2 as admin
         self.assertTrue(login_user(self.client, "u1"))
-        response = self.client.post(reverse("chat_set_admin", kwargs={
+        self.client.post(reverse("chat_set_admin", kwargs={
             "chat_id": cid,
             "member_id": self.users[1].id
         }), data="true")
@@ -950,7 +950,7 @@ class GroupChatTests(TestCase):
 
         # Login to u1(owner) and set u2 as admin
         self.assertTrue(login_user(self.client, "u1"))
-        response = self.client.post(reverse("chat_set_admin", kwargs={
+        self.client.post(reverse("chat_set_admin", kwargs={
             "chat_id": cid,
             "member_id": self.users[1].id
         }), data="true")
