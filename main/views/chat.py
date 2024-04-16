@@ -273,7 +273,7 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
 
     For GET request:
 
-    This API will return the chat information as described in the new_chat API, or refer to Chat.to_struct.
+    This API will return the chat information, refer to UserChatRelation.to_struct.
 
     For DELETE request:
 
