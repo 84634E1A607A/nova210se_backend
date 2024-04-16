@@ -1054,7 +1054,3 @@ class GroupChatTests(TestCase):
             "member_id": self.users[0].id
         }))
         self.assertEqual(response.status_code, 403)
-
-    def test_chat_status_if_user_deleted(self):
-        # TODO
-        pass
