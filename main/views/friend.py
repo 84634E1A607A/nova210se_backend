@@ -123,7 +123,7 @@ def send_invitation(data: dict, auth_user: AuthUser):
     Send a friend invitations to the user with the given id with the given comment.
 
     If a pending invitation is found from the receiver to the sender, the API will accept the invitation and return
-    the created friendship.
+    the created friendship; source is not validated in this case.
 
     This API return 200 status code with empty data field if the invitation is sent successfully.
 
@@ -168,14 +168,26 @@ def send_invitation(data: dict, auth_user: AuthUser):
     if "source" not in data:
         return 400, "Source not provided"
 
+    # Invitation from search
     if isinstance(data["source"], str):
         if data["source"] not in ["search"]:
             return 400, "Invalid source"
         source = -1
 
+    # Invitation from group chat
     elif isinstance(data["source"], int):
         source = data["source"]
-        return 400, f"Group invitation from {source} not implemented yet"
+
+        try:
+            chat = Chat.objects.get(id=source)
+        except Chat.DoesNotExist:
+            return 400, "Invitation source not found"
+
+        if user not in chat.members.all():
+            return 400, "You are not a member of the source chat"
+
+        if friend not in chat.members.all():
+            return 400, "Friend is not a member of the source chat"
 
     else:
         return 400, "Invalid source"

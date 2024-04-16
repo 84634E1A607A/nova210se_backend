@@ -747,3 +747,77 @@ class FriendControlTests(TestCase):
         response = self.client.get(reverse("friend_list_friend"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"], [f1.to_struct(), f2.to_struct()])
+
+    def test_send_invitation_from_group(self):
+        """
+        Send invitation from group
+        """
+
+        users = []
+
+        for i in range(4):
+            self.assertTrue(create_user(self.client, f"u{i}"))
+            users.append(get_user_by_name(f"u{i}"))
+
+        create_friendship(self.client, "u0", "u1")
+        create_friendship(self.client, "u0", "u2")
+        create_friendship(self.client, "u0", "u3")
+
+        # Create a chat of all users
+        self.assertTrue(login_user(self.client, "u0"))
+        response = self.client.post(reverse("chat_new"), {
+            "chat_name": "CHAT",
+            "chat_members": [user.id for user in users]
+        })
+        self.assertEqual(response.status_code, 200)
+        chat_id = response.json()["data"]["chat_id"]
+
+        # Test good case
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("friend_invite"), {
+            "id": users[2].id,
+            "source": chat_id,
+            "comment": "Hello"
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FriendInvitation.objects.count(), 1)
+        invitation = FriendInvitation.objects.first()
+        self.assertEqual(invitation.sender, users[1])
+        self.assertEqual(invitation.receiver, users[2])
+        self.assertEqual(invitation.source, chat_id)
+
+        # Test bad chat id
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("friend_invite"), {
+            "id": users[2].id,
+            "source": chat_id + 10,
+            "comment": "Hello"
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # Test user not in chat
+        self.assertTrue(login_user(self.client, "u0"))
+        response = self.client.post(reverse("chat_new"), {
+            "chat_name": "CHAT",
+            "chat_members": [users[0].id, users[2].id]
+        })
+        chat2_id = response.json()["data"]["chat_id"]
+
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("friend_invite"), {
+            "id": users[2].id,
+            "source": chat2_id,
+            "comment": "Hello"
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # Test friend not in chat
+        self.assertTrue(login_user(self.client, "u2"))
+        response = self.client.post(reverse("friend_invite"), {
+            "id": users[3].id,
+            "source": chat2_id,
+            "comment": "Hello"
+        })
+        self.assertEqual(response.status_code, 400)
+
+        self.assertEqual(FriendInvitation.objects.count(), 1)
