@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from main.views import user, friend, friend_group, api_utils, chat
+from main.ws import MainWebsocketConsumer
 
 urlpatterns = [
     # User control
@@ -37,4 +38,8 @@ urlpatterns = [
 
     # Catch all and return 404
     re_path('.*?', api_utils.not_found, name='not_found'),
+]
+
+ws_urlpatterns = [
+    path('ws/', MainWebsocketConsumer.as_asgi(), name='main_websocket'),
 ]

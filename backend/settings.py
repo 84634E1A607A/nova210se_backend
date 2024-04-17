@@ -85,6 +85,13 @@ CORS_ALLOW_HEADERS = (
     "x-requested-with",
 )
 
+# Add In-memory channel layer
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
 # Apply local settings
 if os.path.exists(BASE_DIR / "settings.local.py"):
     exec(open(BASE_DIR / "settings.local.py").read())
