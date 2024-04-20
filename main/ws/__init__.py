@@ -67,10 +67,6 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
         self.user: User | None = None
         self.session_key: str | None = None
 
-        # This is a hack to avoid socket being corrupted by JSON decoding error
-        if AsyncJsonWebsocketConsumer.decode_json != self.decode_json:
-            AsyncJsonWebsocketConsumer.decode_json = self.decode_json
-
     def send_ok(self, action: str, data: any, req_id: int) -> Coroutine:
         return self.send_json({"action": action, "ok": True, "data": data, "request_id": req_id})
 
@@ -103,6 +99,13 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
 
         from main.ws._dispatcher import dispatch_message
         await dispatch_message(self, message)
+
+    async def receive(self, text_data: str = None, bytes_data: bytes = None, **kwargs) -> None:
+        if text_data is None:
+            await self.send_error("Invalid packet", 0)
+            return
+
+        await self.receive_json(await self.decode_json(text_data), **kwargs)
 
     @classmethod
     async def decode_json(cls, text_data):
