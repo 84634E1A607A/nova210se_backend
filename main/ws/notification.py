@@ -169,7 +169,7 @@ def notify_chat_member_invitation(invitation: ChatInvitation):
     """
 
     channel_layer = get_channel_layer()
-    users = invitation.chat.admins + [invitation.chat.owner]
+    users = list(invitation.chat.admins.all()) + [invitation.chat.owner]
     for u in users:
         async_to_sync(channel_layer.group_send)(f"user_{u.id}", {
             "action": "chat_invitation",

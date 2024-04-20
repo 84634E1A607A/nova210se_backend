@@ -22,13 +22,13 @@ async def setup_new_socket_channel(consumer: MainWebsocketConsumer) -> None:
     await consumer.channel_layer.group_add(f"private_chat_{user.id}", consumer.channel_name)
     await consumer.channel_layer.group_add(f"session_{consumer.session_key}", consumer.channel_name)
 
-    chats = await database_sync_to_async(lambda: list(UserChatRelation.objects.filter(user=user)))()
+    relations = await database_sync_to_async(lambda: list(UserChatRelation.objects.filter(user=user)))()
 
-    for chat in chats:
-        if database_sync_to_async(lambda: chat.chat.is_private())():
+    for relation in relations:
+        if await database_sync_to_async(lambda r: r.chat.is_private())(relation):
             continue
 
-        await consumer.channel_layer.group_add(f"chat_{chat.chat.id}", consumer.channel_name)
+        await consumer.channel_layer.group_add(f"chat_{relation.chat.id}", consumer.channel_name)
 
 
 async def discard_socket_channel(consumer: MainWebsocketConsumer) -> None:
@@ -41,10 +41,10 @@ async def discard_socket_channel(consumer: MainWebsocketConsumer) -> None:
     await consumer.channel_layer.group_discard(f"private_chat_{user.id}", consumer.channel_name)
     await consumer.channel_layer.group_discard(f"session_{consumer.session_key}", consumer.channel_name)
 
-    chats = await database_sync_to_async(lambda: list(UserChatRelation.objects.filter(user=user)))()
+    relations = await database_sync_to_async(lambda: list(UserChatRelation.objects.filter(user=user)))()
 
-    for chat in chats:
-        if database_sync_to_async(lambda: chat.chat.is_private())():
+    for relation in relations:
+        if await database_sync_to_async(lambda r: r.chat.is_private())(relation):
             continue
 
-        await consumer.channel_layer.group_discard(f"chat_{chat.chat.id}", consumer.channel_name)
+        await consumer.channel_layer.group_discard(f"chat_{relation.chat.id}", consumer.channel_name)

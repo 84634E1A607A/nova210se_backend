@@ -147,9 +147,10 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
         return 400, "User is already in the chat"
 
     # Create a chat invitation
-    ChatInvitation.objects.create(chat=chat, user=member, invited_by=user)
+    invitation = ChatInvitation.objects.create(chat=chat, user=member, invited_by=user)
 
-    # TODO: Notify the group owner and admins
+    from main.ws.notification import notify_chat_member_invitation
+    notify_chat_member_invitation(invitation)
 
 
 @api()
