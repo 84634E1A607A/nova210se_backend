@@ -93,21 +93,23 @@ def create_friendship(user: User, invitation: FriendInvitation) -> Friend:
     sender = invitation.sender
 
     # Create the friendship
-    friend = Friend(user=user, friend=sender, nickname="", group=user.default_group)
-    friend.save()
-    Friend(user=sender, friend=user, nickname="", group=sender.default_group).save()
+    friend: Friend = Friend.objects.create(user=user, friend=sender, nickname="", group=user.default_group)
+    Friend.objects.create(user=sender, friend=user, nickname="", group=sender.default_group)
     invitation.delete()
 
     # Create a chat for the new friendship
     chat = Chat.objects.create(owner=user, name="")
-    chat.save()
     chat.members.set([user, sender])
-    UserChatRelation(user=user, chat=chat, nickname="").save()
-    UserChatRelation(user=sender, chat=chat, nickname="").save()
+    UserChatRelation.objects.create(user=user, chat=chat, nickname="")
+    UserChatRelation.objects.create(user=sender, chat=chat, nickname="")
 
     # Create a "friend added" message
-    ChatMessage(chat=chat, sender=User.magic_user_system(),
-                message=f"{user.auth_user.username} added {sender.auth_user.username} as a friend").save()
+    msg = ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
+                                     message=f"{user.auth_user.username} added {sender.auth_user.username} as a friend")
+
+    # Notify users of the new message
+    from main.ws.notification import notify_new_message
+    notify_new_message(msg)
 
     return friend
 

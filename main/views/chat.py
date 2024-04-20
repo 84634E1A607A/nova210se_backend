@@ -22,7 +22,7 @@ def new_chat(data: dict, auth_user: AuthUser):
     """
     POST /chat/new
 
-    Create a new chat.
+    Create a new group chat.
 
     This API requires authentication.
 
@@ -80,8 +80,13 @@ def new_chat(data: dict, auth_user: AuthUser):
     members_str = ", ".join([member.auth_user.username for member in members])
 
     # Create a "group added" message
-    ChatMessage(chat=chat, sender=User.magic_user_system(),
-                message=f"Group {chat_name} created by {auth_user.username} with {members_str}").save()
+    msg = ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
+                                     message=f"Group {chat_name} created by {auth_user.username} with {members_str}")
+
+    # Notify all members for a new chat and the new message
+    from main.ws.notification import notify_new_chat, notify_new_message
+    notify_new_chat(chat)
+    notify_new_message(msg)
 
     # Return chat information
     return chat.to_struct()
@@ -233,12 +238,18 @@ def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, metho
     member: User = invitation.user
     chat.members.add(member)
     UserChatRelation.objects.create(user=member, chat=chat, nickname="")
+    from main.ws.notification import notify_chat_member_added
+    notify_chat_member_added(chat, member)
 
     # Send a system message
-    ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
-                               message=f"{auth_user.username} approved " +
-                               f"{member.auth_user.username} to join the group, " +
-                               f"invited by {invitation.invited_by.auth_user.username}")
+    msg = ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
+                                     message=f"{auth_user.username} approved " +
+                                             f"{member.auth_user.username} to join the group, " +
+                                             f"invited by {invitation.invited_by.auth_user.username}")
+
+    from main.ws.notification import notify_new_message
+    notify_new_message(msg)
+
     invitation.delete()
 
 
@@ -312,13 +323,20 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
     # Else, only the user will leave the chat
     if user in chat.admins.all():
         chat.admins.remove(user)
+        from main.ws.notification import notify_admin_state_change
+        notify_admin_state_change(chat, user, False)
 
+    from main.ws.notification import notify_chat_member_to_be_removed
+    notify_chat_member_to_be_removed(chat, user)
     chat.members.remove(user)
     UserChatRelation.objects.filter(user=user, chat=chat).delete()
 
     # Post a system message
-    ChatMessage(chat=chat, sender=User.magic_user_system(),
-                message=f"{auth_user.username} left the chat").save()
+    msg = ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
+                                     message=f"{auth_user.username} left the chat")
+
+    from main.ws.notification import notify_new_message
+    notify_new_message(msg)
 
 
 @api()
@@ -410,6 +428,10 @@ def set_admin(data: bool, chat_id: int, member_id: int, auth_user: AuthUser):
     else:
         chat.admins.remove(member)
 
+    # Notify the chat members
+    from main.ws.notification import notify_admin_state_change
+    notify_admin_state_change(chat, member, data)
+
 
 @api(allowed_methods=["POST"])
 @check_fields({
@@ -436,6 +458,8 @@ def set_owner(data: dict, chat_id: int, auth_user: AuthUser):
     If the user is already the owner / the user is not in the group, the API will return 400.
     """
 
+    from main.ws.notification import notify_admin_state_change, notify_owner_state_change
+
     new_owner_id = data["chat_owner"]
     user = User.objects.get(auth_user=auth_user)
     chat = Chat.objects.filter(id=chat_id)
@@ -460,11 +484,14 @@ def set_owner(data: dict, chat_id: int, auth_user: AuthUser):
 
     if member in chat.admins.all():
         chat.admins.remove(member)
+        notify_admin_state_change(chat, member, False)
 
     chat.owner = member
     chat.save()
+    notify_owner_state_change(chat)
 
     chat.admins.add(user)
+    notify_admin_state_change(chat, user, True)
 
 
 @api(allowed_methods=["DELETE"])
@@ -511,10 +538,18 @@ def remove_member(chat_id: int, member_id: int, auth_user: AuthUser):
             return 403, "You don't have the permission to remove an admin"
 
         chat.admins.remove(member)
+        from main.ws.notification import notify_admin_state_change
+        notify_admin_state_change(chat, member, False)
 
+    # Notify the chat members that a member is to be removed
+    from main.ws.notification import notify_chat_member_to_be_removed
+    notify_chat_member_to_be_removed(chat, member)
     chat.members.remove(member)
     UserChatRelation.objects.filter(user=member, chat=chat).delete()
 
     # Add a system message
-    ChatMessage(chat=chat, sender=User.magic_user_system(),
-                message=f"{auth_user.username} removed {member.auth_user.username} from the group").save()
+    msg = ChatMessage.objects.create(chat=chat, sender=User.magic_user_system(),
+                                     message=f"{auth_user.username} removed {member.auth_user.username} from the group")
+
+    from main.ws.notification import notify_new_message
+    notify_new_message(msg)

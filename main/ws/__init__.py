@@ -58,7 +58,6 @@ from channels.exceptions import DenyConnection
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from main.models import User, AuthUser
-from main.ws.notification_channels import setup_new_socket_channel, discard_socket_channel
 
 
 class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
@@ -66,6 +65,7 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
         super().__init__(*args, **kwargs)
         self.auth_user: AuthUser | None = None
         self.user: User | None = None
+        self.session_key: str | None = None
 
         # This is a hack to avoid socket being corrupted by JSON decoding error
         if AsyncJsonWebsocketConsumer.decode_json != self.decode_json:
@@ -87,11 +87,15 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
             raise DenyConnection
 
         self.user = await database_sync_to_async(User.objects.get)(auth_user=self.auth_user)
+        self.session_key = self.scope["session"].session_key
 
-        await setup_new_socket_channel(self, self.user)
+        from main.ws.notification_channels import setup_new_socket_channel
+        await setup_new_socket_channel(self)
 
     async def disconnect(self, close_code: int) -> None:
-        await discard_socket_channel(self, self.user)
+        if self.user is not None:
+            from main.ws.notification_channels import discard_socket_channel
+            await discard_socket_channel(self)
 
     async def dispatch(self, message):
         if "type" in message:

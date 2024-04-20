@@ -60,6 +60,13 @@ def login(data: dict, request: HttpRequest):
     if auth_user is None:
         return 403, "User does not exist or password is incorrect"
 
+    # If there is an active session, log out the user
+    if request.user.is_authenticated:
+        session_key = request.session.session_key
+        auth_logout(request)
+        from main.ws.notification import notify_logout
+        notify_logout(session_key)
+
     # Log user in
     auth_login(request, auth_user)
 
@@ -135,8 +142,14 @@ def logout(request):
     }
     """
 
+    session_key = request.session.session_key
+
     # Log user out
     auth_logout(request)
+
+    # Notify user of logout
+    from main.ws.notification import notify_logout
+    notify_logout(session_key)
 
 
 @api(allowed_methods=["GET", "PATCH", "DELETE"])
@@ -260,6 +273,11 @@ def edit_user_info(data: dict, request: HttpRequest):
     user.save()
     user.auth_user.save()
     auth_login(request, user.auth_user)
+    request.session.save()
+
+    # Notify user of profile change
+    from main.ws.notification import notify_profile_change
+    notify_profile_change(user, request.session.session_key)
 
     return user.to_detailed_struct()
 
@@ -278,6 +296,10 @@ def delete_user(auth_user: AuthUser):
     # Delete friends
     Friend.objects.filter(user=user).delete()
     Friend.objects.filter(friend=user).delete()
+
+    # Notify user of logout
+    from main.ws.notification import notify_user_deletion
+    notify_user_deletion(user)
 
     user.auth_user.delete()
     user.delete()
