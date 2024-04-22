@@ -6,8 +6,9 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from channels.testing import WebsocketCommunicator
 
-from main.tests.utils import JsonClient, create_user, get_user_by_name, logout_user
+from main.tests.utils import JsonClient, create_user, get_user_by_name, logout_user, create_friendship, login_user
 from main.ws import MainWebsocketConsumer
+from main.models import Chat, ChatMessage, User
 
 
 class TestWebsocket(TestCase):
@@ -123,3 +124,274 @@ class TestWebsocket(TestCase):
         self.assertTrue(response["ok"])
         self.assertEqual(response["action"], "pong")
         self.assertEqual(response["request_id"], 114514)
+
+    async def create_chat(self) -> Chat:
+        """
+        Create a chat for testing
+        """
+
+        def create_chat_sync() -> Chat:
+            self.assertTrue(create_user(self.client, "other"))
+            self.other = get_user_by_name("other")
+            self.assertTrue(create_friendship(self.client, "main", "other"))
+            self.assertTrue(login_user(self.client, "main"))
+            self.communicator.scope["session"] = self.client.session
+            return Chat.objects.filter(name="").last()
+
+        return await database_sync_to_async(create_chat_sync)()
+
+    async def test_socket_send_message(self):
+        """
+        Test that sending a message works
+        """
+
+        await self.setup()
+        chat = await self.create_chat()
+
+        connected, _ = await self.communicator.connect()
+        self.assertTrue(connected)
+
+        # Send a message
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "Hello, world!"
+            },
+        })
+
+        # Check that there is a new-message event
+        notification = await self.communicator.receive_json_from()
+        self.assertEqual(notification["action"], "new_message")
+        self.assertEqual(notification["data"]["message"]["chat_id"], chat.id)
+        self.assertEqual(notification["data"]["message"]["message"], "Hello, world!")
+
+        # Send a message with reply_to
+        reply_msg_id = notification["data"]["message"]["message_id"]
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "REPLY",
+                "reply_to": reply_msg_id,
+            },
+        })
+
+        notification = await self.communicator.receive_json_from()
+        self.assertEqual(notification["action"], "new_message")
+        self.assertEqual(notification["data"]["message"]["chat_id"], chat.id)
+        self.assertEqual(notification["data"]["message"]["message"], "REPLY")
+        self.assertEqual(notification["data"]["message"]["reply_to_id"], reply_msg_id)
+
+    async def test_socket_send_message_invalid(self):
+        """
+        Try to send a message with invalid data
+        """
+
+        await self.setup()
+        chat = await self.create_chat()
+
+        # Create a test user
+        def create_other_user() -> Chat:
+            self.assertTrue(create_user(self.client, "u1"))
+            self.assertTrue(create_friendship(self.client, "other", "u1"))
+            chat2 = Chat.objects.all().last()
+            self.assertTrue(login_user(self.client, "main"))
+            self.communicator.scope["session"] = self.client.session
+            return chat2
+
+        chat2 = await database_sync_to_async(create_other_user)()
+
+        connected, _ = await self.communicator.connect()
+        self.assertTrue(connected)
+
+        # Send a message with invalid data
+        await self.communicator.send_json_to({
+            "action": "send_message",
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # No chat_id
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "content": "1",
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Invalid chat_id
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": 1234567,
+                "content": "1",
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Other's chat
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat2.id,
+                "content": "2",
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Invalid content
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": 1,
+                "content": [],
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Empty content
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": 1,
+                "content": "",
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Invalid reply_to
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "AAA",
+                "reply_to": "AAA",
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "AAA",
+                "reply_to": -1,
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Reply to a message in another chat
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "AAA",
+                "reply_to": await database_sync_to_async(lambda: ChatMessage.objects.filter(chat=chat2).first().id)(),
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+    async def test_recall_message(self):
+        """
+        Test recalling a message
+        """
+
+        await self.setup()
+        chat = await self.create_chat()
+
+        connected, _ = await self.communicator.connect()
+        self.assertTrue(connected)
+
+        # Send a message
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "Message to recall"
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+
+        # Recall the message
+        message_id = notification["data"]["message"]["message_id"]
+        await self.communicator.send_json_to({
+            "action": "recall_message",
+            "data": {
+                "message_id": message_id,
+            },
+        })
+
+        # Check that there is a message-recalled event
+        notification = await self.communicator.receive_json_from()
+        self.assertEqual(notification["action"], "message_recalled")
+        self.assertEqual(notification["data"]["message_id"], message_id)
+
+        # Check that the message is recalled
+        message = await database_sync_to_async(ChatMessage.objects.get)(id=message_id)
+        self.assertTrue(message.deleted)
+
+    async def test_recall_message_invalid(self):
+        """
+        Try to recall a message with invalid data
+        """
+
+        await self.setup()
+        chat = await self.create_chat()
+
+        connected, _ = await self.communicator.connect()
+        self.assertTrue(connected)
+
+        # Try to recall a system message
+        sys_msg = await database_sync_to_async(
+            lambda: ChatMessage.objects.filter(chat=chat, sender=User.magic_user_system()).first()
+        )()
+        await self.communicator.send_json_to({
+            "action": "recall_message",
+            "data": {
+                "message_id": sys_msg.id,
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Try to recall a message that doesn't exist
+        await self.communicator.send_json_to({
+            "action": "recall_message",
+            "data": {
+                "message_id": -1,
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)
+
+        # Invalid message_id
+        await self.communicator.send_json_to({
+            "action": "recall_message",
+            "data": {
+                "message_id": "AAA",
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)

@@ -31,7 +31,8 @@ class ChatMessage(models.Model):
             "chat_id": self.chat.id,
             "message": self.message,
             "send_time": self.send_time.timestamp(),
-            "sender": self.sender.to_basic_struct()
+            "sender": self.sender.to_basic_struct(),
+            "reply_to_id": self.reply_to.id if self.reply_to is not None else None,
         }
 
     def to_detailed_struct(self):

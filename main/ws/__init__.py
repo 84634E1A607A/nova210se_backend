@@ -155,5 +155,15 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
         if action == "ping":
             await self.send_ok("pong", None, req_id)
 
+        # Send a message to a chat
+        elif action == "send_message":
+            from main.ws.action import send_message
+            await send_message(self, data, req_id)
+
+        # Recall a message
+        elif action == "recall_message":
+            from main.ws.action import recall_message
+            await recall_message(self, data, req_id)
+
         else:
             await self.send_error(f"Unknown action: {action}", req_id)

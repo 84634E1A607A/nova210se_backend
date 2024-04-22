@@ -95,6 +95,27 @@ def notify_new_message(message: ChatMessage):
         })
 
 
+def notify_message_recalled(message: ChatMessage):
+    """
+    Notify chat members of a message recall
+    """
+
+    chat = message.chat
+    channel_layer = get_channel_layer()
+    if chat.is_private():
+        for u in chat.members.all():
+            async_to_sync(channel_layer.group_send)(f"private_chat_{u.id}", {
+                "action": "message_recalled",
+                "data": {"message_id": message.id},
+            })
+
+    else:
+        async_to_sync(channel_layer.group_send)(f"chat_{chat.id}", {
+            "action": "message_recalled",
+            "data": {"message_id": message.id},
+        })
+
+
 def notify_admin_state_change(chat: Chat, user: User, is_admin: bool):
     """
     Notify chat members of a change in admin status
