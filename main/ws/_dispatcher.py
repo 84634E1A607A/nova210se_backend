@@ -4,7 +4,12 @@ Dispatches the message to the appropriate handler function.
 from main.ws import MainWebsocketConsumer
 
 
-async def dispatch_message(self: MainWebsocketConsumer, message: dict) -> None:
+async def dispatch_notification(self: MainWebsocketConsumer, message: dict) -> None:
+    """
+    Receive all notifications and send them to the front end. For certain notifications that has side effects,
+    additional actions are taken.
+    """
+
     try:
         await self.send_ok(message["action"], message["data"], 0)
     except Exception as e:
