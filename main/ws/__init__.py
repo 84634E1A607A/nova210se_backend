@@ -85,12 +85,12 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
         self.user = await database_sync_to_async(User.objects.get)(auth_user=self.auth_user)
         self.session_key = self.scope["session"].session_key
 
-        from main.ws.notification_channels import setup_new_socket_channel
+        from main.ws._notification_channels import setup_new_socket_channel
         await setup_new_socket_channel(self)
 
     async def disconnect(self, close_code: int) -> None:
         if self.user is not None:
-            from main.ws.notification_channels import discard_socket_channel
+            from main.ws._notification_channels import discard_socket_channel
             await discard_socket_channel(self)
 
     async def dispatch(self, message):
