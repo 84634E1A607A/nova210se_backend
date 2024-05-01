@@ -39,7 +39,3 @@ urlpatterns = [
     # Catch all and return 404
     re_path('.*?', api_utils.not_found, name='not_found'),
 ]
-
-ws_urlpatterns = [
-    path('ws/', MainWebsocketConsumer.as_asgi(), name='main_websocket'),
-]

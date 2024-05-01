@@ -20,7 +20,7 @@ from channels.auth import AuthMiddlewareStack                           # noqa
 from channels.routing import ProtocolTypeRouter, URLRouter              # noqa
 from channels.security.websocket import AllowedHostsOriginValidator     # noqa
 from django.core.asgi import get_asgi_application                       # noqa
-from main.urls import ws_urlpatterns                                    # noqa
+from main.ws.urls import ws_urlpatterns                                 # noqa
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
