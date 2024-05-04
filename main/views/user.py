@@ -8,7 +8,7 @@ from django.http import HttpRequest
 from main.views.api_utils import api, check_fields
 from main.views.generate_avatar import generate_random_avatar
 from main.exceptions import FieldTypeError, FieldMissingError, ClientSideError
-from main.models import User, FriendGroup, Friend, AuthUser
+from main.models import User, FriendGroup, Friend, AuthUser, UserChatRelation
 
 
 @api(allowed_methods=["POST"], needs_auth=False)
@@ -289,6 +289,16 @@ def delete_user(auth_user: AuthUser):
     """
 
     user: User = User.objects.get(auth_user=auth_user)
+
+    # Notify all chats for user leaving
+    from main.ws.notification import notify_chat_member_to_be_removed
+    for relation in UserChatRelation.objects.filter(user=user):
+        notify_chat_member_to_be_removed(relation.chat, user)
+
+    # Notify all friends for user deletion
+    from main.ws.notification import notify_friend_to_be_deleted
+    for friend in Friend.objects.filter(user=user):
+        notify_friend_to_be_deleted(user, friend)
 
     # Delete friend groups
     FriendGroup.objects.filter(user=user).delete()

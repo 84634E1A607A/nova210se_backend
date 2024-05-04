@@ -318,6 +318,9 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
 
     # Will delete the whole chat
     if user == chat.owner:
+        from main.ws.notification import notify_chat_to_be_deleted
+        notify_chat_to_be_deleted(chat)
+
         chat.delete()
         return
 

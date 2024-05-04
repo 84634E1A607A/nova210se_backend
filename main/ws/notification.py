@@ -83,7 +83,7 @@ def notify_new_message(message: ChatMessage):
     channel_layer = get_channel_layer()
     if chat.is_private():
         for u in chat.members.all():
-            async_to_sync(channel_layer.group_send)(f"private_chat_{u.id}", {
+            async_to_sync(channel_layer.group_send)(f"user_{u.id}", {
                 "action": "new_message",
                 "data": {"message": message.to_basic_struct()},
             })
@@ -104,7 +104,7 @@ def notify_message_recalled(message: ChatMessage):
     channel_layer = get_channel_layer()
     if chat.is_private():
         for u in chat.members.all():
-            async_to_sync(channel_layer.group_send)(f"private_chat_{u.id}", {
+            async_to_sync(channel_layer.group_send)(f"user_{u.id}", {
                 "action": "message_recalled",
                 "data": {"message_id": message.id},
             })
@@ -196,3 +196,35 @@ def notify_chat_member_invitation(invitation: ChatInvitation):
             "action": "chat_invitation",
             "data": {"invitation": invitation.to_struct()},
         })
+
+
+def notify_chat_to_be_deleted(chat: Chat):
+    """
+    Notify chat members that a chat is to be deleted
+    """
+
+    if chat.is_private():
+        return
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(f"chat_{chat.id}", {
+        "action": "chat_deleted",
+        "data": {"chat": chat.to_struct()},
+        "chat_id": chat.id,
+    })
+
+
+def notify_friend_to_be_deleted(user: User, friend: User):
+    """
+    Notify user that a friend is to be deleted
+    """
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(f"user_{user.id}", {
+        "action": "friend_deleted",
+        "data": {"user_id": friend.id},
+    })
+    async_to_sync(channel_layer.group_send)(f"user_{friend.id}", {
+        "action": "friend_deleted",
+        "data": {"user_id": user.id},
+    })

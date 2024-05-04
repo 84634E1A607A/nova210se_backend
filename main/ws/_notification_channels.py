@@ -1,8 +1,8 @@
 """
 Describes multiple channels that a user may subscribe to
 
-- User notification channel (user_{user_id}), used to notify user of account changes / friend changes etc
-- Private chat channel (private_chat_{user_id}), used to notify user of private chat messages
+- User notification channel (user_{user_id}), used to notify user of account changes /
+    friend state changes / private chat / etc
 - Chat channel (chat_{chat_id}), used to notify chat members of group chat messages / admin info / etc
 - Session channel (session_{session_id}), used to notify user of session logout
 """
@@ -19,7 +19,6 @@ async def setup_new_socket_channel(consumer: MainWebsocketConsumer) -> None:
 
     user = consumer.user
     await consumer.channel_layer.group_add(f"user_{user.id}", consumer.channel_name)
-    await consumer.channel_layer.group_add(f"private_chat_{user.id}", consumer.channel_name)
     await consumer.channel_layer.group_add(f"session_{consumer.session_key}", consumer.channel_name)
 
     relations = await database_sync_to_async(lambda: list(UserChatRelation.objects.filter(user=user)))()
@@ -38,7 +37,6 @@ async def discard_socket_channel(consumer: MainWebsocketConsumer) -> None:
 
     user = consumer.user
     await consumer.channel_layer.group_discard(f"user_{user.id}", consumer.channel_name)
-    await consumer.channel_layer.group_discard(f"private_chat_{user.id}", consumer.channel_name)
     await consumer.channel_layer.group_discard(f"session_{consumer.session_key}", consumer.channel_name)
 
     relations = await database_sync_to_async(lambda: list(UserChatRelation.objects.filter(user=user)))()

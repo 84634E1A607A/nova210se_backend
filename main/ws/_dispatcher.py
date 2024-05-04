@@ -37,3 +37,8 @@ async def dispatch_notification(self: MainWebsocketConsumer, message: dict) -> N
     if message["action"] == "member_deleted" and message["data"]["user_id"] == self.user.id:
         await self.channel_layer.group_discard(f"chat_{message['chat_id']}", self.channel_name)
         return
+
+    # Unsubscribe from chat when the chat is deleted
+    if message["action"] == "chat_deleted":
+        await self.channel_layer.group_discard(f"chat_{message['chat_id']}", self.channel_name)
+        return
