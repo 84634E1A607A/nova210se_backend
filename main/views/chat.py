@@ -191,7 +191,7 @@ def list_invitation(auth_user: AuthUser, chat_id: int):
 @api(allowed_methods=["POST", "DELETE"])
 def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, method: str):
     """
-    GET / DELETE /chat/<chat_id>/invitation/<user_id>
+    POST / DELETE /chat/<chat_id>/invitation/<user_id>
 
     Approve / Decline a chat invitation.
 
@@ -207,7 +207,9 @@ def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, metho
 
     If the invitation does not exist, the API will return 400.
 
-    For GET request:
+    For POST request:
+
+    Send an empty body.
 
     User will be added to the chat, and *then* magic user #SYSTEM will send a message there.
 
