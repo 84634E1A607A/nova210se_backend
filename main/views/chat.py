@@ -146,6 +146,9 @@ def invite_to_chat(data: dict, chat_id: int, auth_user: AuthUser):
     if member in chat.members.all():
         return 400, "User is already in the chat"
 
+    # If a previous invitation exists, delete it
+    ChatInvitation.objects.filter(chat=chat, user=member, invited_by=user).delete()
+
     # Create a chat invitation
     invitation = ChatInvitation.objects.create(chat=chat, user=member, invited_by=user)
 
@@ -252,6 +255,9 @@ def respond_to_invitation(auth_user: AuthUser, chat_id: int, user_id: int, metho
     notify_new_message(msg)
 
     invitation.delete()
+
+    # Also delete other invitations from the same user
+    ChatInvitation.objects.filter(chat=chat, user=member).delete()
 
 
 @api()
