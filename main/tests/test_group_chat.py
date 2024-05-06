@@ -228,6 +228,17 @@ class GroupChatTests(TestCase):
         self.assertEqual(ChatMessage.objects.filter(sender=User.magic_user_deleted()).count(), 0)
         self.assertEqual(ChatMessage.objects.filter(chat__id=ch).count(), 0)
 
+    def test_delete_user_private_chat(self):
+        """
+        Check that when a user is deleted, all related private chat is deleted.
+        """
+
+        self.assertTrue(login_user(self.client, "u2"))
+        self.client.delete(reverse("user"))
+
+        for chat in Chat.objects.all():
+            self.assertEqual(chat.members.count(), 2)
+
     def test_invite_to_chat(self):
         """
         Check that inviting a user to a chat works
