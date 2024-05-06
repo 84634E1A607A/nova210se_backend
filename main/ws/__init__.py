@@ -239,8 +239,8 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
                 "chat_id": int
             }
 
-            If the user is in the chat, all messages in the chat will be marked as read and no response will be sent;
-            otherwise, an error response will be sent.
+            If the user is in the chat, all messages in the chat will be marked as read
+            and you will receive a "messages read" notification; otherwise, an error response will be sent.
             """
 
             from main.ws.action import mark_chat_messages_read

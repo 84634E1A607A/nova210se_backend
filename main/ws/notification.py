@@ -244,3 +244,23 @@ def notify_friend_created(user: User, friend: User):
         "action": "friend_created",
         "data": {"friend": user.to_detailed_struct()},
     })
+
+
+def notify_messages_read(user: User, chat: Chat):
+    """
+    Notify chat members that a user has read all messages
+    """
+
+    channel_layer = get_channel_layer()
+    if chat.is_private():
+        for u in chat.members.all():
+            async_to_sync(channel_layer.group_send)(f"user_{u.id}", {
+                "action": "messages_read",
+                "data": {"chat_id": chat.id, "user_id": user.id},
+            })
+
+    else:
+        async_to_sync(channel_layer.group_send)(f"chat_{chat.id}", {
+            "action": "messages_read",
+            "data": {"chat_id": chat.id, "user_id": user.id},
+        })

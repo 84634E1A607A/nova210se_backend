@@ -416,7 +416,9 @@ class TestWebsocket(TestCase):
         })
 
         # Check that no error is returned
-        await self.communicator.receive_nothing(0.5, 0.05)
+        notification = await self.communicator.receive_json_from()
+        self.assertTrue(notification["ok"])
+        self.assertEqual(notification["action"], "messages_read")
 
         # Check that all messages are read
         def check_msg_read_sync():

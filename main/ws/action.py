@@ -149,3 +149,6 @@ async def mark_chat_messages_read(self: MainWebsocketConsumer, data: dict, req_i
             msg.read_users.add(self.user)
 
     await database_sync_to_async(mark_msg_read_sync)()
+
+    from main.ws.notification import notify_messages_read
+    await database_sync_to_async(notify_messages_read)(self.user, chat)
