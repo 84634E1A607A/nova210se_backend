@@ -297,8 +297,8 @@ def delete_user(auth_user: AuthUser):
 
     # Notify all friends for user deletion
     from main.ws.notification import notify_friend_to_be_deleted
-    for friend in Friend.objects.filter(user=user):
-        notify_friend_to_be_deleted(user, friend)
+    for friend in Friend.objects.filter(user=user).union(Friend.objects.filter(friend=user)):
+        notify_friend_to_be_deleted(friend)
 
     # Delete friend groups
     FriendGroup.objects.filter(user=user).delete()

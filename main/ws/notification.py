@@ -4,7 +4,7 @@ Defines multiple notifications that can be sent to users
 from asgiref.sync import async_to_sync
 from channels.layers import InMemoryChannelLayer
 
-from main.models import User, ChatMessage, Chat, ChatInvitation
+from main.models import User, ChatMessage, Chat, ChatInvitation, Friend
 
 
 def get_channel_layer() -> InMemoryChannelLayer:
@@ -214,19 +214,15 @@ def notify_chat_to_be_deleted(chat: Chat):
     })
 
 
-def notify_friend_to_be_deleted(user: User, friend: User):
+def notify_friend_to_be_deleted(friendship: Friend):
     """
-    Notify user that a friend is to be deleted
+    Notify user that a friend is to be deleted, this is sent only to the opposite user
     """
 
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(f"user_{user.id}", {
+    async_to_sync(channel_layer.group_send)(f"user_{friendship.friend.id}", {
         "action": "friend_deleted",
-        "data": {"user_id": friend.id},
-    })
-    async_to_sync(channel_layer.group_send)(f"user_{friend.id}", {
-        "action": "friend_deleted",
-        "data": {"user_id": user.id},
+        "data": {"friend": friendship.user.to_detailed_struct()},
     })
 
 

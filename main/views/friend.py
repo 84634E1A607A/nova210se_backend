@@ -392,13 +392,15 @@ def delete_friend(auth_user: AuthUser, friend_id):
         return 400, "Friend not found"
 
     from main.ws.notification import notify_friend_to_be_deleted
-    notify_friend_to_be_deleted(friend.user, friend.friend)
+    notify_friend_to_be_deleted(friend)
 
     # Delete related private chat; Private chat SHOULD always exist and be unique
     Chat.objects.filter(owner=friend.user, members=friend.friend, name="") \
         .union(Chat.objects.filter(owner=friend.friend, members=friend.user, name="")).first().delete()
 
-    Friend.objects.get(user=friend.friend, friend=friend.user).delete()
+    reverse = Friend.objects.get(user=friend.friend, friend=friend.user)
+    notify_friend_to_be_deleted(reverse)
+    reverse.delete()
 
     friend.delete()
 
