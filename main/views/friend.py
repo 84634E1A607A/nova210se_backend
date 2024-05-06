@@ -97,6 +97,10 @@ def create_friendship(user: User, invitation: FriendInvitation) -> Friend:
     Friend.objects.create(user=sender, friend=user, nickname="", group=sender.default_group)
     invitation.delete()
 
+    # Notify users of the new friendship
+    from main.ws.notification import notify_friend_created
+    notify_friend_created(user, sender)
+
     # Create a chat for the new friendship
     chat = Chat.objects.create(owner=user, name="")
     chat.members.set([user, sender])

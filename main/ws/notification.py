@@ -228,3 +228,19 @@ def notify_friend_to_be_deleted(user: User, friend: User):
         "action": "friend_deleted",
         "data": {"user_id": user.id},
     })
+
+
+def notify_friend_created(user: User, friend: User):
+    """
+    Notify user that a user accepted a friend request
+    """
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(f"user_{user.id}", {
+        "action": "friend_created",
+        "data": {"friend": friend.to_detailed_struct()},
+    })
+    async_to_sync(channel_layer.group_send)(f"user_{friend.id}", {
+        "action": "friend_created",
+        "data": {"friend": user.to_detailed_struct()},
+    })
