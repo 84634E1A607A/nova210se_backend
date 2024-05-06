@@ -125,3 +125,27 @@ async def recall_message(self: MainWebsocketConsumer, data: dict, req_id: int):
     # Notify chat members
     from main.ws.notification import notify_message_recalled
     await database_sync_to_async(notify_message_recalled)(message)
+
+
+async def mark_chat_messages_read(self: MainWebsocketConsumer, data: dict, req_id: int):
+    """
+    Mark all messages in a chat as read
+    """
+
+    # Validate data and get Chat
+    if not isinstance(data, dict) or "chat_id" not in data or not isinstance(data["chat_id"], int):
+        await self.send_error("Invalid chat_id", req_id)
+        return
+
+    chat_id: int = data["chat_id"]
+    try:
+        chat: Chat = await database_sync_to_async(Chat.objects.get)(id=chat_id)
+    except Chat.DoesNotExist:
+        await self.send_error("Invalid chat_id", req_id)
+        return
+
+    def mark_msg_read_sync():
+        for msg in ChatMessage.objects.filter(chat=chat):
+            msg.read_users.add(self.user)
+
+    await database_sync_to_async(mark_msg_read_sync)()

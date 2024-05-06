@@ -395,3 +395,44 @@ class TestWebsocket(TestCase):
         notification = await self.communicator.receive_json_from()
         self.assertFalse(notification["ok"])
         self.assertEqual(notification["code"], 400)
+
+    async def test_mark_chat_messages_read(self):
+        """
+        Test marking all messages in a chat as read
+        """
+
+        await self.setup()
+        chat = await self.create_chat()
+
+        connected, _ = await self.communicator.connect()
+        self.assertTrue(connected)
+
+        # Read all messages (now the system one)
+        await self.communicator.send_json_to({
+            "action": "messages_read",
+            "data": {
+                "chat_id": chat.id,
+            },
+        })
+
+        # Check that no error is returned
+        await self.communicator.receive_nothing(0.5, 0.05)
+
+        # Check that all messages are read
+        def check_msg_read_sync():
+            messages = ChatMessage.objects.filter(chat=chat)
+            for message in messages:
+                self.assertTrue(self.user in message.read_users.all())
+
+        await database_sync_to_async(check_msg_read_sync)()
+
+        # Try to mark messages in an invalid chat, for simplicity this isn't split into multiple tests
+        await self.communicator.send_json_to({
+            "action": "messages_read",
+            "data": {
+                "chat_id": -1,
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+        self.assertFalse(notification["ok"])
+        self.assertEqual(notification["code"], 400)

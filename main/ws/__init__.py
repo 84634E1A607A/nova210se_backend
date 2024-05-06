@@ -214,7 +214,6 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
             from main.ws.action import send_message
             await send_message(self, data, req_id)
 
-        # Recall a message
         elif action == "recall_message":
             """
             Recall a sent message.
@@ -231,6 +230,21 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
 
             from main.ws.action import recall_message
             await recall_message(self, data, req_id)
+
+        elif action == "messages_read":
+            """
+            Mark all messages of a certain chat as read
+
+            Expects data to be a dictionary in the following format: {
+                "chat_id": int
+            }
+
+            If the user is in the chat, all messages in the chat will be marked as read and no response will be sent;
+            otherwise, an error response will be sent.
+            """
+
+            from main.ws.action import mark_chat_messages_read
+            await mark_chat_messages_read(self, data, req_id)
 
         else:
             await self.send_error(f"Unknown action: {action}", req_id)
