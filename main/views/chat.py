@@ -1,3 +1,6 @@
+import datetime
+import math
+
 from django.db.models import QuerySet
 
 from .api_utils import api, check_fields
@@ -379,6 +382,91 @@ def get_messages(chat_id: int, auth_user: AuthUser):
         return 403, "You don't have sufficient permission to view the messages"
 
     return [message.to_detailed_struct() for message in ChatMessage.objects.filter(chat=chat).order_by("-send_time")]
+
+
+@api(allowed_methods=["POST"])
+def filter_messages(chat_id: int, data: dict, auth_user: AuthUser):
+    """
+    POST /chat/<chat_id>/filter
+
+    Filter messages in a chat given filter conditions.
+
+    This API requires authentication.
+
+    If the chat does not exist, the API will return 400; if the user is not in the chat, the API will return 403.
+
+    This API accepts a POST request with JSON content:  {
+        "begin_time": 192937123.342,                        // UNIX timestamp, optional
+        "end_time": 192937123.342,                          // UNIX timestamp, optional
+        "sender": [1, 2, 3]                                 // List of user ids, optional
+    }
+
+    begin_time, end_time and sender are all optional, but if none of them are provided, the API will return 400.
+
+    begin_time and end_time are not type-strict, but they must be convertible to a float. If the conversion fails, the
+    API will return 400.
+
+    #SYSTEM and #DELETED can be used as sender ids.
+
+    The API will return a list of messages that satisfy the filter conditions. Each message will be in the format of
+    ChatMessage.to_detailed_struct, ordered by send time descendent.
+    """
+
+    user = User.objects.get(auth_user=auth_user)
+
+    try:
+        chat = Chat.objects.get(id=chat_id)
+    except Chat.DoesNotExist:
+        return 400, "Chat not found"
+
+    if user not in chat.members.all():
+        return 403, "You don't have permission to view the messages"
+
+    if not isinstance(data, dict):
+        return 400, "Data must be a dictionary"
+
+    try:
+        begin_time = float(data.get("begin_time", math.nan))
+        end_time = float(data.get("end_time", math.nan))
+    except (TypeError, ValueError):
+        return 400, "Invalid time format"
+
+    # Parse sender
+    sender = []
+    if (sender_raw := data.get("sender", None)) is not None:
+        if not isinstance(sender_raw, list):
+            return 400, "Sender must be a list of user ids"
+
+        for s in sender_raw:
+            if not isinstance(s, int):
+                return 400, "Sender must be a list of user ids"
+
+            try:
+                u = User.objects.get(id=s)
+            except User.DoesNotExist:
+                return 400, "User not found in this chat"
+
+            if u not in chat.members.all() and not u.system:
+                return 400, "User not found in this chat"
+
+            sender.append(u)
+
+    # Construct filter query
+    filters = {}
+    if not math.isnan(begin_time):
+        filters["send_time__gte"] = datetime.datetime.fromtimestamp(begin_time)
+
+    if not math.isnan(end_time):
+        filters["send_time__lte"] = datetime.datetime.fromtimestamp(end_time)
+
+    if sender_raw is not None:
+        filters["sender__in"] = sender
+
+    if len(filters) == 0:
+        return 400, "At least one filter condition should be provided"
+
+    return [message.to_detailed_struct()
+            for message in ChatMessage.objects.filter(chat=chat, **filters).order_by("-send_time")]
 
 
 @api(allowed_methods=["POST"])

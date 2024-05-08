@@ -174,7 +174,7 @@ class GroupChatTests(TestCase):
 
         # Long chat name
         response = self.client.post(reverse("chat_new"), {
-            "chat_name": "NAME"*60,
+            "chat_name": "NAME" * 60,
             "chat_members": [self.users[0].id, self.users[1].id]
         })
         self.assertEqual(response.status_code, 400)
@@ -734,6 +734,99 @@ class GroupChatTests(TestCase):
         # Try to get a group message which the group does not exist
         response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": 123}))
         self.assertEqual(response.status_code, 404)
+
+    def test_filter_messages(self):
+        """
+        Filter messages by date range and sender
+        """
+
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Try filter #SYSTEM messages
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "sender": [User.magic_user_system().id, ]
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 1)
+
+        # Try filter message by time
+        import datetime
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "begin_time": datetime.datetime.now().timestamp() + 10
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 0)
+
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "begin_time": datetime.datetime.now().timestamp() - 10
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 1)
+
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "end_time": datetime.datetime.now().timestamp() - 10
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 0)
+
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "end_time": datetime.datetime.now().timestamp() + 10
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 1)
+
+    def test_filter_messages_fail(self):
+        """
+        Try to filter messages with wrong format
+        """
+
+        cid = self.create_chat("chat1", [self.users[0], self.users[1], self.users[2]])
+
+        # Try to filter messages with wrong json format
+        self.assertTrue(login_user(self.client, "u1"))
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "sender": 123
+        })
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "begin_time": "123asdf"
+        })
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "end_time": {"time": 123}
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # With invalid chat
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": 123}), {
+            "end_time": 123
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # With invalid sender
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "sender": [-1]
+        })
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "sender": [self.users[3].id]
+        })
+        self.assertEqual(response.status_code, 400)
+
+        # With no filter
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {})
+        self.assertEqual(response.status_code, 400)
+
+        # With unauthorized user
+        self.assertTrue(login_user(self.client, "u4"))
+        response = self.client.post(reverse("chat_filter_messages", kwargs={"chat_id": cid}), {
+            "end_time": 123
+        })
+        self.assertEqual(response.status_code, 403)
 
     def test_set_unset_admin(self):
         """

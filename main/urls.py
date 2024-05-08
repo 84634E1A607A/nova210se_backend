@@ -35,6 +35,7 @@ urlpatterns = [
     path('chat/<int:chat_id>/set_owner', chat.set_owner, name='chat_set_owner'),
     path('chat/<int:chat_id>/<int:member_id>', chat.remove_member, name='chat_remove_member'),
     path('chat/<int:chat_id>/messages', chat.get_messages, name='chat_list_messages'),
+    path('chat/<int:chat_id>/filter', chat.filter_messages, name='chat_filter_messages'),
 
     # Catch all and return 404
     re_path('.*?', api_utils.not_found, name='not_found'),
