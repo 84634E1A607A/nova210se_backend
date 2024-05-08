@@ -6,3 +6,6 @@
 settings.local.py
 data/db.sqlite3
 .githooks
+sonar-project.properties
+README.md
+pycodestyle.cfg
