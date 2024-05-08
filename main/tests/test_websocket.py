@@ -5,6 +5,7 @@ from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from channels.testing import WebsocketCommunicator
+from django.urls import reverse
 
 from main.tests.utils import JsonClient, create_user, get_user_by_name, logout_user, create_friendship, login_user
 from main.ws import MainWebsocketConsumer
@@ -415,7 +416,7 @@ class TestWebsocket(TestCase):
             },
         })
 
-        # Check that no error is returned
+        # Check that there is a messages-read event
         notification = await self.communicator.receive_json_from()
         self.assertTrue(notification["ok"])
         self.assertEqual(notification["action"], "messages_read")
@@ -427,6 +428,14 @@ class TestWebsocket(TestCase):
                 self.assertTrue(self.user in message.read_users.all())
 
         await database_sync_to_async(check_msg_read_sync)()
+
+        # Check that get chat info will return 0 unread messages
+        def check_unread_sync():
+            response = self.client.get(reverse("chat_get_delete", args=[chat.id]))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["data"]["unread_count"], 0)
+
+        await database_sync_to_async(check_unread_sync)()
 
         # Try to mark messages in an invalid chat, for simplicity this isn't split into multiple tests
         await self.communicator.send_json_to({

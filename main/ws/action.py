@@ -1,6 +1,8 @@
+import datetime
+
 from channels.db import database_sync_to_async
 
-from main.models import User, Chat, ChatMessage
+from main.models import User, Chat, ChatMessage, UserChatRelation
 from main.ws import MainWebsocketConsumer
 
 
@@ -147,6 +149,8 @@ async def mark_chat_messages_read(self: MainWebsocketConsumer, data: dict, req_i
     def mark_msg_read_sync():
         for msg in ChatMessage.objects.filter(chat=chat):
             msg.read_users.add(self.user)
+
+        UserChatRelation.objects.filter(user=self.user, chat=chat).update(unread_after=datetime.datetime.now())
 
     await database_sync_to_async(mark_msg_read_sync)()
 

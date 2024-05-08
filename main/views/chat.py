@@ -308,12 +308,12 @@ def query_chat(chat_id: int, auth_user: AuthUser, method: str):
 
     user = User.objects.get(auth_user=auth_user)
 
-    relation = UserChatRelation.objects.filter(user=user, chat__id=chat_id)
+    relation: QuerySet = UserChatRelation.objects.filter(user=user, chat__id=chat_id)
 
     if not relation.exists():
         return 400, "Chat not found"
 
-    relation = relation.first()
+    relation: UserChatRelation = relation.first()
 
     chat = relation.chat
 
