@@ -167,6 +167,8 @@ class TestWebsocket(TestCase):
         self.assertEqual(notification["data"]["message"]["chat_id"], chat.id)
         self.assertEqual(notification["data"]["message"]["message"], "Hello, world!")
 
+        _ = await self.communicator.receive_json_from()
+
         # Send a message with reply_to
         reply_msg_id = notification["data"]["message"]["message_id"]
         await self.communicator.send_json_to({
@@ -183,6 +185,8 @@ class TestWebsocket(TestCase):
         self.assertEqual(notification["data"]["message"]["chat_id"], chat.id)
         self.assertEqual(notification["data"]["message"]["message"], "REPLY")
         self.assertEqual(notification["data"]["message"]["reply_to_id"], reply_msg_id)
+
+        _ = await self.communicator.receive_json_from()
 
     async def test_socket_send_message_invalid(self):
         """
@@ -332,6 +336,9 @@ class TestWebsocket(TestCase):
         })
         notification = await self.communicator.receive_json_from()
 
+        # Ignore the message_read event
+        _ = await self.communicator.receive_json_from()
+
         # Recall the message
         message_id = notification["data"]["message"]["message_id"]
         await self.communicator.send_json_to({
@@ -417,6 +424,7 @@ class TestWebsocket(TestCase):
             },
         })
         notification = await self.communicator.receive_json_from()
+        _ = await self.communicator.receive_json_from()
 
         # Delete the message
         message_id = notification["data"]["message"]["message_id"]

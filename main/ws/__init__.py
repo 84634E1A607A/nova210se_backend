@@ -209,6 +209,8 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
             where the replied message must be in the same chat.
 
             If any error condition is met, the server will send an "error" notification with the error message.
+
+            After the message is sent, all messages in this chat is marked as read automatically.
             """
 
             from main.ws.action import send_message

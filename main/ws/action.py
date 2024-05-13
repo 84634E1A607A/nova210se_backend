@@ -89,6 +89,9 @@ async def send_message(self: MainWebsocketConsumer, data: dict, req_id: int):
     from main.ws.notification import notify_new_message
     await database_sync_to_async(notify_new_message)(new_message)
 
+    # Mark messages in this chat as read
+    await mark_chat_messages_read(self, {"chat_id": chat.id}, req_id)
+
 
 def sync_mark_msg_recalled(message: ChatMessage):
     """
