@@ -92,7 +92,7 @@ def new_chat(data: dict, auth_user: AuthUser):
     notify_new_message(msg)
 
     # Return chat information
-    return chat.to_struct()
+    return chat.to_struct(user)
 
 
 @api(allowed_methods=["POST"])
@@ -381,7 +381,8 @@ def get_messages(chat_id: int, auth_user: AuthUser):
     if user not in chat.members.all():
         return 403, "You don't have sufficient permission to view the messages"
 
-    return [message.to_detailed_struct() for message in ChatMessage.objects.filter(chat=chat).order_by("-send_time")]
+    return [message.to_detailed_struct(user)
+            for message in ChatMessage.objects.filter(chat=chat).order_by("-send_time")]
 
 
 @api(allowed_methods=["POST"])
@@ -465,7 +466,7 @@ def filter_messages(chat_id: int, data: dict, auth_user: AuthUser):
     if len(filters) == 0:
         return 400, "At least one filter condition should be provided"
 
-    return [message.to_detailed_struct()
+    return [message.to_detailed_struct(user)
             for message in ChatMessage.objects.filter(chat=chat, **filters).order_by("-send_time")]
 
 

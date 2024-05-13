@@ -45,7 +45,7 @@ class Chat(models.Model):
     """
     members = models.ManyToManyField(User, related_name="chat_members")
 
-    def to_struct(self):
+    def to_struct(self, user: User):
         # Imported here to avoid circular import
         from main.models import ChatMessage
 
@@ -55,5 +55,8 @@ class Chat(models.Model):
             "chat_owner": self.owner.to_basic_struct(),
             "chat_admins": [admin.to_basic_struct() for admin in self.admins.all()],
             "chat_members": [member.to_basic_struct() for member in self.members.all()],
-            "last_message": ChatMessage.objects.filter(chat=self).order_by("-send_time")[0].to_basic_struct()
+            "last_message": ChatMessage.objects.filter(chat=self, deleted=False)
+                                               .order_by("-send_time")
+                                               .exclude(deleted_users=user)[0]
+                                               .to_basic_struct(user)
         }

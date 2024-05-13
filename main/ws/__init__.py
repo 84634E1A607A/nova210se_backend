@@ -216,11 +216,18 @@ class MainWebsocketConsumer(AsyncJsonWebsocketConsumer):
 
         elif action == "recall_message":
             """
-            Recall a sent message.
+            Recall a sent message or delete a message.
 
             Expects data to be a dictionary in the following format: {
-                "message_id": int
+                "message_id": int,
+                "delete": true
             }
+
+            If delete==true, the message will be deleted, only for the current user.
+
+            You will receive a "message deleted" notification if the message is deleted successfully;
+
+            Otherwise the message will be recalled.
 
             You must be the sender to recall the message.
 

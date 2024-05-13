@@ -97,12 +97,14 @@ def sync_mark_msg_recalled(message: ChatMessage):
 
     message.deleted = True
     message.message = "Message recalled"
+    message.sender = User.magic_user_deleted()
+    message.reply_to = None
     message.save()
 
 
 async def recall_message(self: MainWebsocketConsumer, data: dict, req_id: int):
     """
-    Recall a message from a Chat
+    Recall or delete a message from a Chat
     """
 
     # Validate data and get ChatMessage
@@ -115,6 +117,15 @@ async def recall_message(self: MainWebsocketConsumer, data: dict, req_id: int):
         message: ChatMessage = await database_sync_to_async(ChatMessage.objects.get)(id=message_id)
     except ChatMessage.DoesNotExist:
         await self.send_error("Invalid message to recall", req_id)
+        return
+
+    delete = data.get("delete", False) is True
+
+    if delete:
+        await database_sync_to_async(lambda: message.deleted_users.add(self.user))()
+
+        from main.ws.notification import notify_message_deleted
+        await database_sync_to_async(notify_message_deleted)(message, self.user)
         return
 
     if not await database_sync_to_async(lambda: message.sender == self.user)():

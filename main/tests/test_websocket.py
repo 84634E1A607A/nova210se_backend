@@ -397,6 +397,46 @@ class TestWebsocket(TestCase):
         self.assertFalse(notification["ok"])
         self.assertEqual(notification["code"], 400)
 
+    async def test_delete_message(self):
+        """
+        Test deleting a message
+        """
+
+        await self.setup()
+        chat = await self.create_chat()
+
+        connected, _ = await self.communicator.connect()
+        self.assertTrue(connected)
+
+        # Send a message
+        await self.communicator.send_json_to({
+            "action": "send_message",
+            "data": {
+                "chat_id": chat.id,
+                "content": "Message to delete"
+            },
+        })
+        notification = await self.communicator.receive_json_from()
+
+        # Delete the message
+        message_id = notification["data"]["message"]["message_id"]
+        await self.communicator.send_json_to({
+            "action": "recall_message",
+            "data": {
+                "message_id": message_id,
+                "delete": True
+            },
+        })
+
+        # Check that there is a message-deleted event
+        notification = await self.communicator.receive_json_from()
+        self.assertEqual(notification["action"], "message_deleted")
+        self.assertEqual(notification["data"]["message_id"], message_id)
+
+        # Check that the message is deleted
+        message = await database_sync_to_async(ChatMessage.objects.get)(id=message_id)
+        self.assertTrue(await database_sync_to_async(lambda: self.user in message.deleted_users.all())())
+
     async def test_mark_chat_messages_read(self):
         """
         Test marking all messages in a chat as read

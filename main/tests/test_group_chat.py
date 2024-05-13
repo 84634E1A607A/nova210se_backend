@@ -529,12 +529,12 @@ class GroupChatTests(TestCase):
         response = self.client.get(reverse("chat_list"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"], [
-            {'chat': Chat.objects.get(id=1).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=2).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=3).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=cid1).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=cid2).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=cid3).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=1).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=2).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=3).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid1).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid2).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid3).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
         ])
 
         # List and check for u3
@@ -542,9 +542,9 @@ class GroupChatTests(TestCase):
         response = self.client.get(reverse("chat_list"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"], [
-            {'chat': Chat.objects.get(id=2).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=4).to_struct(), 'nickname': '', 'unread_count': 1},
-            {'chat': Chat.objects.get(id=cid2).to_struct(), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=2).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=4).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
+            {'chat': Chat.objects.get(id=cid2).to_struct(User.magic_user_system()), 'nickname': '', 'unread_count': 1},
         ])
 
     def test_get_chat_info(self):
@@ -705,7 +705,8 @@ class GroupChatTests(TestCase):
         response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": cid}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"], [
-            ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).first().to_detailed_struct()
+            ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).first()
+                               .to_detailed_struct(User.magic_user_system())
         ])
 
         # Send a message in chat
@@ -713,8 +714,10 @@ class GroupChatTests(TestCase):
         response = self.client.get(reverse("chat_list_messages", kwargs={"chat_id": cid}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"], [
-            ChatMessage.objects.filter(chat__id=cid, sender=self.users[0]).first().to_detailed_struct(),
-            ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).first().to_detailed_struct()
+            ChatMessage.objects.filter(chat__id=cid, sender=self.users[0]).first()
+                               .to_detailed_struct(User.magic_user_system()),
+            ChatMessage.objects.filter(chat__id=cid, sender=User.magic_user_system()).first()
+                               .to_detailed_struct(User.magic_user_system())
         ])
 
     def test_get_messages_fail(self):

@@ -42,7 +42,7 @@ class UserChatRelation(models.Model):
 
     def to_struct(self):
         return {
-            "chat": self.chat.to_struct(),
+            "chat": self.chat.to_struct(self.user),
             "nickname": self.nickname,
             "unread_count": ChatMessage.objects.filter(chat=self.chat, send_time__gt=self.unread_after).count()
         }
