@@ -49,14 +49,16 @@ class Chat(models.Model):
         # Imported here to avoid circular import
         from main.models import ChatMessage
 
+        last_msg = ChatMessage.objects.filter(chat=self, deleted=False).order_by("-send_time") \
+            .exclude(deleted_users=user)
+
+        last_msg = last_msg.first().message if last_msg.exists() else ""
+
         return {
             "chat_id": self.id,
             "chat_name": self.name,
             "chat_owner": self.owner.to_basic_struct(),
             "chat_admins": [admin.to_basic_struct() for admin in self.admins.all()],
             "chat_members": [member.to_basic_struct() for member in self.members.all()],
-            "last_message": ChatMessage.objects.filter(chat=self, deleted=False)
-                                               .order_by("-send_time")
-                                               .exclude(deleted_users=user)[0]
-                                               .to_basic_struct(user)
+            "last_message": last_msg
         }
