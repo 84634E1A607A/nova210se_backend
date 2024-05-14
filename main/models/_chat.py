@@ -52,7 +52,7 @@ class Chat(models.Model):
         last_msg = ChatMessage.objects.filter(chat=self, deleted=False).order_by("-send_time") \
             .exclude(deleted_users=user)
 
-        last_msg = last_msg.first().message if last_msg.exists() else ""
+        last_msg = last_msg.first().to_basic_struct(user) if last_msg.exists() else ""
 
         return {
             "chat_id": self.id,
