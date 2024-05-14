@@ -85,13 +85,13 @@ def notify_new_message(message: ChatMessage):
         for u in chat.members.all():
             async_to_sync(channel_layer.group_send)(f"user_{u.id}", {
                 "action": "new_message",
-                "data": {"message": message.to_basic_struct(User.magic_user_system())},
+                "data": {"message": message.to_detailed_struct(User.magic_user_system())},
             })
 
     else:
         async_to_sync(channel_layer.group_send)(f"chat_{chat.id}", {
             "action": "new_message",
-            "data": {"message": message.to_basic_struct(User.magic_user_system())},
+            "data": {"message": message.to_detailed_struct(User.magic_user_system())},
         })
 
 
